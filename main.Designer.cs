@@ -28,8 +28,15 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(main));
             this.textBox = new System.Windows.Forms.TextBox();
             this.resultTextBox = new System.Windows.Forms.TextBox();
+            this.notifyIcon = new System.Windows.Forms.NotifyIcon(this.components);
+            this.contextMenuStrip_notifyIcon = new System.Windows.Forms.ContextMenuStrip(this.components);
+            this.Show_ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.Exit_ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.contextMenuStrip_notifyIcon.SuspendLayout();
             this.SuspendLayout();
             // 
             // textBox
@@ -63,6 +70,36 @@
             this.resultTextBox.TabIndex = 1;
             this.resultTextBox.TabStop = false;
             // 
+            // notifyIcon
+            // 
+            this.notifyIcon.ContextMenuStrip = this.contextMenuStrip_notifyIcon;
+            this.notifyIcon.Icon = ((System.Drawing.Icon)(resources.GetObject("notifyIcon.Icon")));
+            this.notifyIcon.Text = "MinTranslation";
+            this.notifyIcon.Visible = true;
+            this.notifyIcon.MouseClick += new System.Windows.Forms.MouseEventHandler(this.notifyIcon_MouseClick);
+            // 
+            // contextMenuStrip_notifyIcon
+            // 
+            this.contextMenuStrip_notifyIcon.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.Show_ToolStripMenuItem,
+            this.Exit_ToolStripMenuItem});
+            this.contextMenuStrip_notifyIcon.Name = "contextMenuStrip_notifyIcon";
+            this.contextMenuStrip_notifyIcon.Size = new System.Drawing.Size(101, 48);
+            // 
+            // Show_ToolStripMenuItem
+            // 
+            this.Show_ToolStripMenuItem.Name = "Show_ToolStripMenuItem";
+            this.Show_ToolStripMenuItem.Size = new System.Drawing.Size(100, 22);
+            this.Show_ToolStripMenuItem.Text = "显示";
+            this.Show_ToolStripMenuItem.Click += new System.EventHandler(this.Show_ToolStripMenuItem_Click);
+            // 
+            // Exit_ToolStripMenuItem
+            // 
+            this.Exit_ToolStripMenuItem.Name = "Exit_ToolStripMenuItem";
+            this.Exit_ToolStripMenuItem.Size = new System.Drawing.Size(100, 22);
+            this.Exit_ToolStripMenuItem.Text = "退出";
+            this.Exit_ToolStripMenuItem.Click += new System.EventHandler(this.Exit_ToolStripMenuItem_Click);
+            // 
             // main
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
@@ -84,6 +121,9 @@
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "MinTranslation";
             this.TopMost = true;
+            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.main_FormClosing);
+            this.Shown += new System.EventHandler(this.main_Shown);
+            this.contextMenuStrip_notifyIcon.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -93,6 +133,10 @@
 
         private System.Windows.Forms.TextBox textBox;
         private System.Windows.Forms.TextBox resultTextBox;
+        private System.Windows.Forms.NotifyIcon notifyIcon;
+        private System.Windows.Forms.ContextMenuStrip contextMenuStrip_notifyIcon;
+        private System.Windows.Forms.ToolStripMenuItem Show_ToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem Exit_ToolStripMenuItem;
     }
 }
 
