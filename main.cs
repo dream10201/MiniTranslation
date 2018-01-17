@@ -2,6 +2,7 @@
 using System;
 using System.Drawing;
 using System.Net;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -17,12 +18,32 @@ namespace MinTranslation
         private const int WM_DESTROY = 0x2; //窗口消息-销毁  
         private const int Space = 0x3572; //热键ID
         private bool isShow = false;
+        #region 内存回收
+        [DllImport("kernel32.dll", EntryPoint = "SetProcessWorkingSetSize")]
+        public static extern int SetProcessWorkingSetSize(IntPtr process, int minSize, int maxSize);
+        /// <summary>
+        /// 释放内存
+        /// </summary>
+        public static void ClearMemory(object source, System.Timers.ElapsedEventArgs e)
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            if (Environment.OSVersion.Platform == PlatformID.Win32NT)
+            {
+                main.SetProcessWorkingSetSize(System.Diagnostics.Process.GetCurrentProcess().Handle, -1, -1);
+            }
+        }
+        #endregion
         public main()
         {
             InitializeComponent();
             this.Hide();
             //初始speech
             InitSpeech();
+            System.Timers.Timer timer = new System.Timers.Timer(3000);
+            timer.Elapsed += new System.Timers.ElapsedEventHandler(ClearMemory);
+            timer.AutoReset = false;
+            timer.Enabled = true;
         }
         private SpVoice spVoice;
         private void InitSpeech() {
