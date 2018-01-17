@@ -3,4 +3,4 @@
 ## 使用
 ALT+Q显示隐藏
 回车翻译
-
+![image](MinTranslation/blob/master/GIF.gif)
