@@ -3,4 +3,4 @@
 ## 使用
 ALT+Q显示隐藏
 回车翻译
-![image](xizirumeng/MinTranslation/blob/master/GIF.gif)
+![image](http://github.com/xizirumeng/MinTranslation/raw/master/GIF.gif)
