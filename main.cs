@@ -40,15 +40,15 @@ namespace MinTranslation
             this.Hide();
             //初始speech
             InitSpeech();
-            System.Timers.Timer timer = new System.Timers.Timer(3000);
+            System.Timers.Timer timer = new System.Timers.Timer(10000);
             timer.Elapsed += new System.Timers.ElapsedEventHandler(ClearMemory);
-            timer.AutoReset = false;
+            timer.AutoReset = true;
             timer.Enabled = true;
         }
         private SpVoice spVoice;
         private void InitSpeech() {
             spVoice = new SpVoice();
-            spVoice.Rate = -2; //语速,[-10,10]
+            spVoice.Rate = 0; //语速,[-10,10]
             spVoice.Volume = 100; //音量,[0,100]
             //spVoice.Voice = spVoice.GetVoices().Item(0); //语音库
             //voice.Speak(resultText);
@@ -103,19 +103,18 @@ namespace MinTranslation
                 result.Append(mc[i]);
             }
             String resultText = result.ToString().Replace("\"", "").Replace("[", "");
-            int num = resultText.Length > 24 ? resultText.Length / 24 + 1 : 1;
+            int num = resultText.Length > (en?40: 24) ? resultText.Length / (en ? 40 : 24) + 1 : 1;
             this.BeginInvoke(new Action(()=> {
                 this.resultTextBox.Text = resultText;
-                this.resultTextBox.Size = new Size(this.resultTextBox.Width, (num * this.resultTextBox.Font.Height + this.resultTextBox.Font.Height / 8)+2);
+                this.resultTextBox.Size = new Size(this.resultTextBox.Width, num * this.resultTextBox.Font.Height + this.resultTextBox.Font.Height / 8);
             }));
-            //朗读英文
-            spVoice.Speak(en?resultText:text);
+            //朗读英文,停止上一朗读
+            spVoice.Speak(en?resultText:text,SpeechVoiceSpeakFlags.SVSFlagsAsync |SpeechVoiceSpeakFlags.SVSFPurgeBeforeSpeak);
         }
         private void textBox_KeyUp(object sender, KeyEventArgs e)
         {
             if (e.KeyValue == 13) {
                 ThreadPool.QueueUserWorkItem(new WaitCallback(Translation),this.textBox.Text);
-                
             }
         }
         private void FormStatus(bool status) {
@@ -125,9 +124,10 @@ namespace MinTranslation
                 this.Activate();
                 this.Focus();
                 this.textBox.Focus();
-                this.textBox.Select();
+                this.textBox.SelectAll();
             }
             else {
+                spVoice.Speak("", SpeechVoiceSpeakFlags.SVSFlagsAsync | SpeechVoiceSpeakFlags.SVSFPurgeBeforeSpeak);
                 this.Hide();
             }
             isShow = status;
@@ -182,7 +182,7 @@ namespace MinTranslation
             AppHotKey.UnRegKey(Handle, Space); //销毁热键
             this.notifyIcon.Dispose();
             this.Dispose();
-            System.Environment.Exit(0);
+            Environment.Exit(0);
         }
         //鼠标左键显示窗体
         private void notifyIcon_MouseClick(object sender, MouseEventArgs e)
