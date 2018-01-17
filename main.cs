@@ -34,30 +34,38 @@ namespace MinTranslation
         }
         //翻译
         private void Translation(Object obj) {
-            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls;
-            //翻译
             String text = obj.ToString();
             bool en = true; 
             StringBuilder url = new StringBuilder();
+            int zhNum = 0, enNum = 0;
             for (int i = 0; i < text.Length; i++)
             {
+                //过滤数字
                 if (!int.TryParse(text[i].ToString(), out int n))
                 {
                     if (text[0] > 127)
                     {
-                        //汉字开头
-                        url.Append(googleUrl.Replace("#current#", "zh-CN").Replace("#aims#", "en"));
+                        //汉字
+                        zhNum++;
                     }
                     else
                     {
-                        //字母开头
-                        url.Append(googleUrl.Replace("#current#", "en").Replace("#aims#", "zh-CN"));
-                        en = false;
+                        //字母
+                        enNum++;
                     }
-                    break;
                 }
             }
+            //判断汉字和字母占比类决定翻译
+            if (enNum > zhNum) {
+                url.Append(googleUrl.Replace("#current#", "en").Replace("#aims#", "zh-CN"));
+                en = false;
+            }
+            else
+            {
+                url.Append(googleUrl.Replace("#current#", "zh-CN").Replace("#aims#", "en"));
+            }
             url.Append(text);
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls;
             HttpHelper httpHelper = new HttpHelper();
             HttpItem httpItem = new HttpItem();
             httpItem.URL = url.ToString();
@@ -65,6 +73,7 @@ namespace MinTranslation
             httpItem.Method = "get";
             HttpResult httpresult = httpHelper.GetHtml(httpItem);
             String resultHtml = httpresult.Html;
+            //正则获取结果集
             Regex regex = new Regex("\\[\\\".*?\\\"");
             MatchCollection mc = regex.Matches(resultHtml);
             StringBuilder result = new StringBuilder();
@@ -78,6 +87,7 @@ namespace MinTranslation
                 this.resultTextBox.Text = resultText;
                 this.resultTextBox.Size = new Size(this.resultTextBox.Width, (num * this.resultTextBox.Font.Height + this.resultTextBox.Font.Height / 8)+2);
             }));
+            //朗读英文
             spVoice.Speak(en?resultText:text);
         }
         private void textBox_KeyUp(object sender, KeyEventArgs e)
