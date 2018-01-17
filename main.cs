@@ -11,7 +11,7 @@ namespace MinTranslation
 {
     public partial class main : Form
     {
-        private const String googleUrl = "http://translate.google.cn/translate_a/single?client=gtx&sl=#current#&tl=#aims#&dt=t&q=";
+        private const String googleUrl = "https://translate.google.cn/translate_a/single?client=gtx&dt=t&sl=";
         private const int WM_HOTKEY = 0x312; //窗口消息-热键  
         private const int WM_CREATE = 0x1; //窗口消息-创建  
         private const int WM_DESTROY = 0x2; //窗口消息-销毁  
@@ -36,7 +36,7 @@ namespace MinTranslation
         private void Translation(Object obj) {
             String text = obj.ToString();
             bool en = true; 
-            StringBuilder url = new StringBuilder();
+            StringBuilder url = new StringBuilder(googleUrl);
             int zhNum = 0, enNum = 0;
             for (int i = 0; i < text.Length; i++)
             {
@@ -57,12 +57,12 @@ namespace MinTranslation
             }
             //判断汉字和字母占比类决定翻译
             if (enNum > zhNum) {
-                url.Append(googleUrl.Replace("#current#", "en").Replace("#aims#", "zh-CN"));
+                url.Append("en&tl=zh-CN&q=");
                 en = false;
             }
             else
             {
-                url.Append(googleUrl.Replace("#current#", "zh-CN").Replace("#aims#", "en"));
+                url.Append("zh-CN&tl=en&q=");
             }
             url.Append(text);
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls;
@@ -160,6 +160,7 @@ namespace MinTranslation
             //退出程序
             AppHotKey.UnRegKey(Handle, Space); //销毁热键
             this.notifyIcon.Dispose();
+            this.Dispose();
             System.Environment.Exit(0);
         }
         //鼠标左键显示窗体
