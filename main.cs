@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Windows.Forms;
 
 namespace MinTranslation
@@ -20,47 +21,56 @@ namespace MinTranslation
             InitializeComponent();
             this.Hide();
         }
-
+        //翻译
+        private void Translation(Object obj) {
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls;
+            //翻译
+            String text = obj.ToString();
+            StringBuilder url = new StringBuilder();
+            for (int i = 0; i < text.Length; i++)
+            {
+                if (!int.TryParse(text[i].ToString(), out int n))
+                {
+                    if (text[0] > 127)
+                    {
+                        //汉字开头
+                        url.Append(googleUrl.Replace("#current#", "zh-CN").Replace("#aims#", "en"));
+                    }
+                    else
+                    {
+                        //字母开头
+                        url.Append(googleUrl.Replace("#current#", "en").Replace("#aims#", "zh-CN"));
+                    }
+                    break;
+                }
+            }
+            url.Append(text);
+            HttpHelper httpHelper = new HttpHelper();
+            HttpItem httpItem = new HttpItem();
+            httpItem.URL = url.ToString();
+            httpItem.ResultType = ResultType.String;
+            httpItem.Method = "get";
+            HttpResult httpresult = httpHelper.GetHtml(httpItem);
+            String resultHtml = httpresult.Html;
+            Regex regex = new Regex("\\[\\\".*?\\\"");
+            MatchCollection mc = regex.Matches(resultHtml);
+            StringBuilder result = new StringBuilder();
+            for (int i = 0; i < mc.Count; i++)
+            {
+                result.Append(mc[i]);
+            }
+            String resultText = result.ToString().Replace("\"", "").Replace("[", "");
+            int num = resultText.Length > 24 ? resultText.Length / 24 + 1 : 1;
+            this.BeginInvoke(new Action(()=> {
+                this.resultTextBox.Text = resultText;
+                this.resultTextBox.Size = new Size(this.resultTextBox.Width, num * this.resultTextBox.Font.Height + this.resultTextBox.Font.Height / 8);
+            }));
+        }
         private void textBox_KeyUp(object sender, KeyEventArgs e)
         {
             if (e.KeyValue == 13) {
-                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls;
-                //翻译
-                String value = this.textBox.Text.Trim();
-                StringBuilder url = new StringBuilder();
-                for (int i = 0; i < value.Length; i++) {
-                    if (!int.TryParse(value[i].ToString(),out int n)) {
-                        if (value[0] > 127)
-                        {
-                            //汉字开头
-                            url.Append(googleUrl.Replace("#current#", "zh-CN").Replace("#aims#", "en"));
-                        }
-                        else
-                        {
-                            //字母开头
-                            url.Append(googleUrl.Replace("#current#", "en").Replace("#aims#", "zh-CN"));
-                        }
-                        break;
-                    }
-                }
-                url.Append(value);
-                HttpHelper httpHelper = new HttpHelper();
-                HttpItem httpItem = new HttpItem();
-                httpItem.URL = url.ToString();
-                httpItem.ResultType = ResultType.String;
-                httpItem.Method = "get";
-                HttpResult httpresult=httpHelper.GetHtml(httpItem);
-                String resultHtml = httpresult.Html;
-                Regex regex = new Regex("\\[\\\".*?\\\"");
-                MatchCollection mc = regex.Matches(resultHtml);
-                StringBuilder result = new StringBuilder();
-                for (int i = 0; i < mc.Count; i++) {
-                    result.Append(mc[i]);
-                }
-                String resultText = result.ToString().Replace("\"", "").Replace("[", "");
-                this.resultTextBox.Text = resultText;
-                int num = resultText.Length>24? resultText.Length/24+1:1;
-                this.resultTextBox.Size = new Size(this.resultTextBox.Width, num * this.resultTextBox.Font.Height + this.resultTextBox.Font.Height/8);
+                ThreadPool.QueueUserWorkItem(new WaitCallback(Translation),this.textBox.Text);
+                
             }
         }
         private void FormStatus(bool status) {
