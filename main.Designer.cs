@@ -45,11 +45,13 @@
             this.textBox.AcceptsTab = true;
             this.textBox.CausesValidation = false;
             this.textBox.Font = new System.Drawing.Font("微软雅黑", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.textBox.ImeMode = System.Windows.Forms.ImeMode.On;
             this.textBox.Location = new System.Drawing.Point(13, 12);
             this.textBox.MaxLength = 999999;
             this.textBox.Name = "textBox";
             this.textBox.Size = new System.Drawing.Size(314, 23);
             this.textBox.TabIndex = 0;
+            this.textBox.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.textBox_KeyPress);
             this.textBox.KeyUp += new System.Windows.Forms.KeyEventHandler(this.textBox_KeyUp);
             // 
             // resultTextBox
@@ -61,6 +63,7 @@
             this.resultTextBox.CausesValidation = false;
             this.resultTextBox.Font = new System.Drawing.Font("微软雅黑", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
             this.resultTextBox.Location = new System.Drawing.Point(13, 42);
+            this.resultTextBox.Margin = new System.Windows.Forms.Padding(0);
             this.resultTextBox.MaximumSize = new System.Drawing.Size(314, 0);
             this.resultTextBox.MaxLength = 999999;
             this.resultTextBox.Multiline = true;

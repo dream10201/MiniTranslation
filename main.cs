@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SpeechLib;
+using System;
 using System.Drawing;
 using System.Net;
 using System.Text;
@@ -20,12 +21,23 @@ namespace MinTranslation
         {
             InitializeComponent();
             this.Hide();
+            //初始speech
+            InitSpeech();
+        }
+        private SpVoice spVoice;
+        private void InitSpeech() {
+            spVoice = new SpVoice();
+            spVoice.Rate = -2; //语速,[-10,10]
+            spVoice.Volume = 100; //音量,[0,100]
+            //spVoice.Voice = spVoice.GetVoices().Item(0); //语音库
+            //voice.Speak(resultText);
         }
         //翻译
         private void Translation(Object obj) {
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls;
             //翻译
             String text = obj.ToString();
+            bool en = true; 
             StringBuilder url = new StringBuilder();
             for (int i = 0; i < text.Length; i++)
             {
@@ -40,6 +52,7 @@ namespace MinTranslation
                     {
                         //字母开头
                         url.Append(googleUrl.Replace("#current#", "en").Replace("#aims#", "zh-CN"));
+                        en = false;
                     }
                     break;
                 }
@@ -63,8 +76,9 @@ namespace MinTranslation
             int num = resultText.Length > 24 ? resultText.Length / 24 + 1 : 1;
             this.BeginInvoke(new Action(()=> {
                 this.resultTextBox.Text = resultText;
-                this.resultTextBox.Size = new Size(this.resultTextBox.Width, num * this.resultTextBox.Font.Height + this.resultTextBox.Font.Height / 8);
+                this.resultTextBox.Size = new Size(this.resultTextBox.Width, (num * this.resultTextBox.Font.Height + this.resultTextBox.Font.Height / 8)+2);
             }));
+            spVoice.Speak(en?resultText:text);
         }
         private void textBox_KeyUp(object sender, KeyEventArgs e)
         {
@@ -112,7 +126,7 @@ namespace MinTranslation
                 case WM_CREATE: //窗口消息-创建  
                     AppHotKey.RegKey(Handle, Space,  AppHotKey.KeyModifiers.Alt, Keys.Q);
                     break;
-                case WM_DESTROY: //窗口消息-销毁  
+                case WM_DESTROY: //窗口消息-销毁
                     AppHotKey.UnRegKey(Handle, Space); //销毁热键  
                     break;
                 default:
@@ -134,6 +148,8 @@ namespace MinTranslation
         private void Exit_ToolStripMenuItem_Click(object sender, EventArgs e)
         {
             //退出程序
+            AppHotKey.UnRegKey(Handle, Space); //销毁热键
+            this.notifyIcon.Dispose();
             System.Environment.Exit(0);
         }
         //鼠标左键显示窗体
@@ -148,6 +164,14 @@ namespace MinTranslation
         {
             e.Cancel = true;
             FormStatus(false);
+        }
+
+        private void textBox_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            if (e.KeyChar == System.Convert.ToChar(13))
+            {
+                e.Handled = true;
+            }
         }
     }
 }
