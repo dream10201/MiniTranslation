@@ -103,10 +103,11 @@ namespace MinTranslation
                 result.Append(mc[i]);
             }
             String resultText = result.ToString().Replace("\"", "").Replace("[", "");
-            int num = resultText.Length > (en?40: 24) ? resultText.Length / (en ? 40 : 24) + 1 : 1;
             this.BeginInvoke(new Action(()=> {
                 this.resultTextBox.Text = resultText;
-                this.resultTextBox.Size = new Size(this.resultTextBox.Width, num * this.resultTextBox.Font.Height + this.resultTextBox.Font.Height / 8);
+                //获取自动换行后的行数
+                int num = this.resultTextBox.GetLineFromCharIndex(this.resultTextBox.TextLength)+1;
+                this.resultTextBox.Size = new Size(this.resultTextBox.Width, num * 20);
             }));
             //朗读英文,停止上一朗读
             spVoice.Speak(en?resultText:text,SpeechVoiceSpeakFlags.SVSFlagsAsync |SpeechVoiceSpeakFlags.SVSFPurgeBeforeSpeak);

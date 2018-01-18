@@ -64,7 +64,7 @@
             this.resultTextBox.CausesValidation = false;
             this.resultTextBox.Font = new System.Drawing.Font("微软雅黑", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
             this.resultTextBox.Location = new System.Drawing.Point(13, 42);
-            this.resultTextBox.Margin = new System.Windows.Forms.Padding(0, 12, 0, 5);
+            this.resultTextBox.Margin = new System.Windows.Forms.Padding(0, 10, 0, 1);
             this.resultTextBox.MaximumSize = new System.Drawing.Size(314, 0);
             this.resultTextBox.MaxLength = 999999;
             this.resultTextBox.Multiline = true;
