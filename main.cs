@@ -18,13 +18,14 @@ namespace MinTranslation
         private const int WM_DESTROY = 0x2; //窗口消息-销毁  
         private const int Space = 0x3572; //热键ID
         private bool isShow = false;
+        private SpVoice spVoice;
         #region 内存回收
         [DllImport("kernel32.dll", EntryPoint = "SetProcessWorkingSetSize")]
-        public static extern int SetProcessWorkingSetSize(IntPtr process, int minSize, int maxSize);
+        private static extern int SetProcessWorkingSetSize(IntPtr process, int minSize, int maxSize);
         /// <summary>
         /// 释放内存
         /// </summary>
-        public static void ClearMemory(object source, System.Timers.ElapsedEventArgs e)
+        private static void ClearMemory(object source, System.Timers.ElapsedEventArgs e)
         {
             GC.Collect();
             GC.WaitForPendingFinalizers();
@@ -45,7 +46,6 @@ namespace MinTranslation
             timer.AutoReset = true;
             timer.Enabled = true;
         }
-        private SpVoice spVoice;
         private void InitSpeech() {
             spVoice = new SpVoice();
             spVoice.Rate = 0; //语速,[-10,10]
@@ -123,9 +123,6 @@ namespace MinTranslation
             {
                 this.Show();
                 this.Activate();
-                this.Focus();
-                this.textBox.Focus();
-                this.textBox.SelectAll();
             }
             else {
                 spVoice.Speak("", SpeechVoiceSpeakFlags.SVSFlagsAsync | SpeechVoiceSpeakFlags.SVSFPurgeBeforeSpeak);
@@ -166,7 +163,7 @@ namespace MinTranslation
             }
         }
 
-        private void main_Shown(object sender, EventArgs e)
+        private void Main_Shown(object sender, EventArgs e)
         {
             this.Hide();
         }
@@ -204,6 +201,23 @@ namespace MinTranslation
             if (e.KeyChar == System.Convert.ToChar(13))
             {
                 e.Handled = true;
+            }
+        }
+        //窗体Activated事件
+        private void main_Activated(object sender, EventArgs e)
+        {
+            this.textBox.Focus();
+        }
+        
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (keyData == Keys.Alt)
+            {
+                return base.ProcessCmdKey(ref msg, keyData);
+            }
+            else
+            {
+                return true;
             }
         }
     }
