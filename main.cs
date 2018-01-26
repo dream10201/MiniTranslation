@@ -46,6 +46,18 @@ namespace MinTranslation
             timer.AutoReset = true;
             timer.Enabled = true;
         }
+        //URL编码
+        public static string UrlEncode(string str)
+        {
+            StringBuilder sb = new StringBuilder();
+            byte[] byStr = System.Text.Encoding.UTF8.GetBytes(str); //默认是System.Text.Encoding.Default.GetBytes(str)
+            for (int i = 0; i < byStr.Length; i++)
+            {
+                sb.Append(@"%" + Convert.ToString(byStr[i], 16));
+            }
+
+            return (sb.ToString());
+        }
         private void InitSpeech() {
             spVoice = new SpVoice();
             spVoice.Rate = 0; //语速,[-10,10]
@@ -85,7 +97,7 @@ namespace MinTranslation
             {
                 url.Append("zh-CN&tl=en&q=");
             }
-            url.Append(text);
+            url.Append(UrlEncode(text));
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls;
             HttpHelper httpHelper = new HttpHelper();
             HttpItem httpItem = new HttpItem();
