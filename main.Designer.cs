@@ -111,11 +111,12 @@
             this.AutoSize = true;
             this.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.BackgroundImageLayout = System.Windows.Forms.ImageLayout.None;
+            this.CausesValidation = false;
             this.ClientSize = new System.Drawing.Size(339, 47);
             this.Controls.Add(this.resultTextBox);
             this.Controls.Add(this.textBox);
-            this.DoubleBuffered = true;
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
+            this.ImeMode = System.Windows.Forms.ImeMode.On;
             this.KeyPreview = true;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
@@ -126,8 +127,9 @@
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "MinTranslation";
             this.TopMost = true;
+            this.Activated += new System.EventHandler(this.main_Activated);
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.main_FormClosing);
-            this.Shown += new System.EventHandler(this.main_Shown);
+            this.Shown += new System.EventHandler(this.Main_Shown);
             this.contextMenuStrip_notifyIcon.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
