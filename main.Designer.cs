@@ -116,7 +116,7 @@
             this.Controls.Add(this.resultTextBox);
             this.Controls.Add(this.textBox);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
-            this.ImeMode = System.Windows.Forms.ImeMode.On;
+            this.ImeMode = System.Windows.Forms.ImeMode.Off;
             this.KeyPreview = true;
             this.MaximizeBox = false;
             this.MinimizeBox = false;

@@ -211,14 +211,11 @@ namespace MinTranslation
         
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
-            if (keyData == Keys.Alt)
-            {
-                return base.ProcessCmdKey(ref msg, keyData);
-            }
-            else
-            {
+            if (keyData.ToString().Equals("Menu, Alt")) {
                 return true;
             }
+            return base.ProcessCmdKey(ref msg, keyData);
+            
         }
     }
 }
