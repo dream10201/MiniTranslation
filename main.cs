@@ -50,7 +50,7 @@ namespace MinTranslation
         public static string UrlEncode(string str)
         {
             StringBuilder sb = new StringBuilder();
-            byte[] byStr = System.Text.Encoding.UTF8.GetBytes(str); //默认是System.Text.Encoding.Default.GetBytes(str)
+            byte[] byStr = Encoding.UTF8.GetBytes(str); //默认是System.Text.Encoding.Default.GetBytes(str)
             for (int i = 0; i < byStr.Length; i++)
             {
                 sb.Append(@"%" + Convert.ToString(byStr[i], 16));
@@ -235,6 +235,23 @@ namespace MinTranslation
             //Esc
             if (e.KeyChar == (char)27) {
                 FormStatus(false);
+            }
+        }
+        //替换剪切板文本内容
+        public void replaceClipboard()
+        {
+            IDataObject iData = Clipboard.GetDataObject();
+            if (iData.GetDataPresent(DataFormats.Text))
+            {
+                Clipboard.SetDataObject(iData.GetData(DataFormats.Text).ToString().Replace("\r\n", " ").Replace("\r", " ").Replace("\n", " ").Replace("\t", " "), true);
+            }
+        }
+
+        private void textBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if ((Control.ModifierKeys == Keys.Control) && (e.KeyCode == Keys.V))
+            {
+                replaceClipboard();
             }
         }
     }
