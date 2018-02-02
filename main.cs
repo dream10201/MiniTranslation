@@ -76,7 +76,7 @@ namespace MinTranslation
                 //过滤数字
                 if (!int.TryParse(text[i].ToString(), out int n))
                 {
-                    if (text[0] > 127)
+                    if (text[i] > 127)
                     {
                         //汉字
                         zhNum++;
@@ -228,6 +228,14 @@ namespace MinTranslation
             }
             return base.ProcessCmdKey(ref msg, keyData);
             
+        }
+
+        private void main_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            //Esc
+            if (e.KeyChar == (char)27) {
+                FormStatus(false);
+            }
         }
     }
 }
