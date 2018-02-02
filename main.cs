@@ -67,7 +67,7 @@ namespace MinTranslation
         }
         //翻译
         private void Translation(Object obj) {
-            String text = obj.ToString();
+            String text = obj.ToString().ToLower();
             bool en = true; 
             StringBuilder url = new StringBuilder(googleUrl);
             int zhNum = 0, enNum = 0;
