@@ -130,6 +130,7 @@
             this.Activated += new System.EventHandler(this.main_Activated);
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.main_FormClosing);
             this.Shown += new System.EventHandler(this.Main_Shown);
+            this.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.main_KeyPress);
             this.contextMenuStrip_notifyIcon.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
