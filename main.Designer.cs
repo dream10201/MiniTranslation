@@ -36,6 +36,7 @@
             this.contextMenuStrip_notifyIcon = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.Show_ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.Exit_ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.read = new System.Windows.Forms.Label();
             this.contextMenuStrip_notifyIcon.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -50,7 +51,7 @@
             this.textBox.Margin = new System.Windows.Forms.Padding(0, 0, 13, 0);
             this.textBox.MaxLength = 999999;
             this.textBox.Name = "textBox";
-            this.textBox.Size = new System.Drawing.Size(314, 23);
+            this.textBox.Size = new System.Drawing.Size(292, 23);
             this.textBox.TabIndex = 0;
             this.textBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.textBox_KeyDown);
             this.textBox.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.textBox_KeyPress);
@@ -105,6 +106,17 @@
             this.Exit_ToolStripMenuItem.Text = "退出";
             this.Exit_ToolStripMenuItem.Click += new System.EventHandler(this.Exit_ToolStripMenuItem_Click);
             // 
+            // read
+            // 
+            this.read.AutoSize = true;
+            this.read.Font = new System.Drawing.Font("宋体", 14.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.read.Location = new System.Drawing.Point(309, 13);
+            this.read.Name = "read";
+            this.read.Size = new System.Drawing.Size(20, 19);
+            this.read.TabIndex = 2;
+            this.read.Text = "R";
+            this.read.MouseHover += new System.EventHandler(this.read_MouseHover);
+            // 
             // main
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
@@ -114,6 +126,7 @@
             this.BackgroundImageLayout = System.Windows.Forms.ImageLayout.None;
             this.CausesValidation = false;
             this.ClientSize = new System.Drawing.Size(339, 47);
+            this.Controls.Add(this.read);
             this.Controls.Add(this.resultTextBox);
             this.Controls.Add(this.textBox);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
@@ -146,6 +159,7 @@
         private System.Windows.Forms.ContextMenuStrip contextMenuStrip_notifyIcon;
         private System.Windows.Forms.ToolStripMenuItem Show_ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem Exit_ToolStripMenuItem;
+        private System.Windows.Forms.Label read;
     }
 }
 
