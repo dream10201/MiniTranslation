@@ -19,6 +19,7 @@ namespace MinTranslation
         private const int Space = 0x3572; //热键ID
         private bool isShow = false;
         private SpVoice spVoice;
+        private StringBuilder soundText=new StringBuilder();
         #region 内存回收
         [DllImport("kernel32.dll", EntryPoint = "SetProcessWorkingSetSize")]
         private static extern int SetProcessWorkingSetSize(IntPtr process, int minSize, int maxSize);
@@ -121,8 +122,8 @@ namespace MinTranslation
                 int num = this.resultTextBox.GetLineFromCharIndex(this.resultTextBox.TextLength)+1;
                 this.resultTextBox.Size = new Size(this.resultTextBox.Width, num * 20);
             }));
-            //朗读英文,停止上一朗读
-            spVoice.Speak(en?resultText:text,SpeechVoiceSpeakFlags.SVSFlagsAsync |SpeechVoiceSpeakFlags.SVSFPurgeBeforeSpeak);
+            soundText.Clear();
+            soundText.Append(en ? resultText : text);
         }
         private void textBox_KeyUp(object sender, KeyEventArgs e)
         {
@@ -253,6 +254,11 @@ namespace MinTranslation
             {
                 replaceClipboard();
             }
+        }
+        private void read_MouseHover(object sender, EventArgs e)
+        {
+            //朗读英文,停止上一朗读
+            spVoice.Speak(soundText.ToString(), SpeechVoiceSpeakFlags.SVSFlagsAsync | SpeechVoiceSpeakFlags.SVSFPurgeBeforeSpeak);
         }
     }
 }
