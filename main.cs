@@ -8,7 +8,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows.Forms;
 
-namespace MinTranslation
+namespace MiniTranslation
 {
     public partial class main : Form
     {
@@ -257,6 +257,11 @@ namespace MinTranslation
         private void read_MouseHover(object sender, EventArgs e)
         {
             //朗读英文,停止上一朗读
+            spVoice.Speak(soundText.ToString(), SpeechVoiceSpeakFlags.SVSFlagsAsync | SpeechVoiceSpeakFlags.SVSFPurgeBeforeSpeak);
+        }
+        //朗读标签鼠标点击时间
+        private void read_MouseClick(object sender, MouseEventArgs e)
+        {
             spVoice.Speak(soundText.ToString(), SpeechVoiceSpeakFlags.SVSFlagsAsync | SpeechVoiceSpeakFlags.SVSFPurgeBeforeSpeak);
         }
     }

@@ -1,4 +1,4 @@
-﻿namespace MinTranslation
+﻿namespace MiniTranslation
 {
     partial class main
     {
@@ -78,7 +78,7 @@
             // 
             this.notifyIcon.ContextMenuStrip = this.contextMenuStrip_notifyIcon;
             this.notifyIcon.Icon = ((System.Drawing.Icon)(resources.GetObject("notifyIcon.Icon")));
-            this.notifyIcon.Text = "MinTranslation";
+            this.notifyIcon.Text = "MiniTranslation";
             this.notifyIcon.Visible = true;
             this.notifyIcon.MouseClick += new System.Windows.Forms.MouseEventHandler(this.notifyIcon_MouseClick);
             // 
@@ -113,6 +113,7 @@
             this.read.Size = new System.Drawing.Size(20, 19);
             this.read.TabIndex = 2;
             this.read.Text = "R";
+            this.read.MouseClick += new System.Windows.Forms.MouseEventHandler(this.read_MouseClick);
             this.read.MouseHover += new System.EventHandler(this.read_MouseHover);
             // 
             // main
@@ -137,7 +138,7 @@
             this.ShowIcon = false;
             this.ShowInTaskbar = false;
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "MinTranslation";
+            this.Text = "MiniTranslation";
             this.TopMost = true;
             this.Activated += new System.EventHandler(this.main_Activated);
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.main_FormClosing);

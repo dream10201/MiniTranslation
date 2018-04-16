@@ -6,8 +6,8 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{8A785476-1AF1-47C8-95BB-7153DBAB8CB3}</ProjectGuid>
     <OutputType>WinExe</OutputType>
-    <RootNamespace>MinTranslation</RootNamespace>
-    <AssemblyName>MinTranslation</AssemblyName>
+    <RootNamespace>MiniTranslation</RootNamespace>
+    <AssemblyName>MiniTranslation</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <IsWebBootstrapper>false</IsWebBootstrapper>
@@ -66,7 +66,7 @@
     <ApplicationIcon>img.ico</ApplicationIcon>
   </PropertyGroup>
   <PropertyGroup>
-    <StartupObject>MinTranslation.Program</StartupObject>
+    <StartupObject>MiniTranslation.Program</StartupObject>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -105,7 +105,6 @@
       <DesignTime>True</DesignTime>
     </Compile>
     <None Include="app.config" />
-    <None Include="MinTranslation_TemporaryKey.pfx" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
