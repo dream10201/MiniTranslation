@@ -125,12 +125,6 @@ namespace MinTranslation
             soundText.Clear();
             soundText.Append(en ? resultText : text);
         }
-        private void textBox_KeyUp(object sender, KeyEventArgs e)
-        {
-            if (e.KeyValue == 13) {
-                ThreadPool.QueueUserWorkItem(new WaitCallback(Translation),this.textBox.Text);
-            }
-        }
         private void FormStatus(bool status) {
             if (status)
             {
@@ -211,9 +205,18 @@ namespace MinTranslation
 
         private void textBox_KeyPress(object sender, KeyPressEventArgs e)
         {
-            if (e.KeyChar == System.Convert.ToChar(13))
+            switch (e.KeyChar)
             {
-                e.Handled = true;
+                //粘贴键
+                case '\u0016':
+                    e.Handled = true;   //屏蔽粘贴
+                    replaceClipboard();
+                    break;
+                //回车键
+                case '\r':
+                    e.Handled = true;
+                    ThreadPool.QueueUserWorkItem(new WaitCallback(Translation), this.textBox.Text);
+                    break;
             }
         }
         //窗体Activated事件
@@ -234,7 +237,7 @@ namespace MinTranslation
         private void main_KeyPress(object sender, KeyPressEventArgs e)
         {
             //Esc
-            if (e.KeyChar == (char)27) {
+            if (e.KeyChar == '\u001b') {
                 FormStatus(false);
             }
         }
@@ -244,15 +247,11 @@ namespace MinTranslation
             IDataObject iData = Clipboard.GetDataObject();
             if (iData.GetDataPresent(DataFormats.Text))
             {
-                Clipboard.SetDataObject(iData.GetData(DataFormats.Text).ToString().Replace("\r\n", " ").Replace("\r", " ").Replace("\n", " ").Replace("\t", " "), true);
-            }
-        }
-
-        private void textBox_KeyDown(object sender, KeyEventArgs e)
-        {
-            if ((Control.ModifierKeys == Keys.Control) && (e.KeyCode == Keys.V))
-            {
-                replaceClipboard();
+                //Clipboard.SetDataObject(iData.GetData(DataFormats.Text).ToString().Replace("\r\n", " ").Replace("\r", " ").Replace("\n", " ").Replace("\t", " "), true);
+                //设置文本框文本
+                textBox.Text = iData.GetData(DataFormats.Text).ToString().Replace("\r\n", " ").Replace("\r", " ").Replace("\n", " ").Replace("\t", " ");
+                //开始翻译
+                ThreadPool.QueueUserWorkItem(new WaitCallback(Translation), this.textBox.Text);
             }
         }
         private void read_MouseHover(object sender, EventArgs e)
