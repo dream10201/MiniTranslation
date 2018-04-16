@@ -18,7 +18,7 @@ namespace MiniTranslation
         private const int WM_DESTROY = 0x2; //窗口消息-销毁  
         private const int Space = 0x3572; //热键ID
         private bool isShow = false;
-        private SpVoice spVoice;
+        private Speech speech;
         private StringBuilder soundText=new StringBuilder();
         #region 内存回收
         [DllImport("kernel32.dll", EntryPoint = "SetProcessWorkingSetSize")]
@@ -41,7 +41,7 @@ namespace MiniTranslation
             InitializeComponent();
             this.Hide();
             //初始speech
-            InitSpeech();
+            speech = new Speech();
             System.Timers.Timer timer = new System.Timers.Timer(10000);
             timer.Elapsed += new System.Timers.ElapsedEventHandler(ClearMemory);
             timer.AutoReset = true;
@@ -58,13 +58,6 @@ namespace MiniTranslation
             }
 
             return (sb.ToString());
-        }
-        private void InitSpeech() {
-            spVoice = new SpVoice();
-            spVoice.Rate = 0; //语速,[-10,10]
-            spVoice.Volume = 100; //音量,[0,100]
-            //spVoice.Voice = spVoice.GetVoices().Item(0); //语音库
-            //voice.Speak(resultText);
         }
         //翻译
         private void Translation(Object obj) {
@@ -132,7 +125,7 @@ namespace MiniTranslation
                 this.Activate();
             }
             else {
-                spVoice.Speak("", SpeechVoiceSpeakFlags.SVSFlagsAsync | SpeechVoiceSpeakFlags.SVSFPurgeBeforeSpeak);
+                speech.Voice("");
                 this.Hide();
             }
             isShow = status;
@@ -257,12 +250,19 @@ namespace MiniTranslation
         private void read_MouseHover(object sender, EventArgs e)
         {
             //朗读英文,停止上一朗读
-            spVoice.Speak(soundText.ToString(), SpeechVoiceSpeakFlags.SVSFlagsAsync | SpeechVoiceSpeakFlags.SVSFPurgeBeforeSpeak);
+            speech.Voice(soundText.ToString());
         }
         //朗读标签鼠标点击时间
         private void read_MouseClick(object sender, MouseEventArgs e)
         {
-            spVoice.Speak(soundText.ToString(), SpeechVoiceSpeakFlags.SVSFlagsAsync | SpeechVoiceSpeakFlags.SVSFPurgeBeforeSpeak);
+            if (this.resultTextBox.Height == 0)
+            {
+                speech.Voice("You're the best");
+            }
+            else
+            {
+                speech.Voice(soundText.ToString());
+            }
         }
     }
 }
