@@ -97,7 +97,7 @@ namespace MiniTranslation
             HttpItem httpItem = new HttpItem();
             httpItem.URL = url.ToString();
             httpItem.ResultType = ResultType.String;
-            httpItem.Method = "get";
+            httpItem.Method = "post";
             HttpResult httpresult = httpHelper.GetHtml(httpItem);
             String resultHtml = httpresult.Html;
             //正则获取结果集
@@ -201,10 +201,11 @@ namespace MiniTranslation
             switch (e.KeyChar)
             {
                 //粘贴键
-                case '\u0016':
-                    e.Handled = true;   //屏蔽粘贴
-                    replaceClipboard();
-                    break;
+                //case '\u0016':
+                //    Console.Write("粘贴");
+                //    e.Handled = true;   //屏蔽粘贴
+                //    replaceClipboard();
+                //    break;
                 //回车键
                 case '\r':
                     e.Handled = true;
@@ -216,15 +217,6 @@ namespace MiniTranslation
         private void main_Activated(object sender, EventArgs e)
         {
             this.textBox.Focus();
-        }
-        
-        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
-        {
-            if (keyData.ToString().Equals("Menu, Alt")) {
-                return true;
-            }
-            return base.ProcessCmdKey(ref msg, keyData);
-            
         }
 
         private void main_KeyPress(object sender, KeyPressEventArgs e)
@@ -242,7 +234,7 @@ namespace MiniTranslation
             {
                 //Clipboard.SetDataObject(iData.GetData(DataFormats.Text).ToString().Replace("\r\n", " ").Replace("\r", " ").Replace("\n", " ").Replace("\t", " "), true);
                 //设置文本框文本
-                textBox.Text = iData.GetData(DataFormats.Text).ToString().Replace("\r\n", " ").Replace("\r", " ").Replace("\n", " ").Replace("\t", " ");
+                //textBox.Text = iData.GetData(DataFormats.Text).ToString().Replace("\r\n", " ").Replace("\r", " ").Replace("\n", " ").Replace("\t", " ");
                 //开始翻译
                 ThreadPool.QueueUserWorkItem(new WaitCallback(Translation), this.textBox.Text);
             }
