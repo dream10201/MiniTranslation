@@ -1,8 +1,6 @@
-﻿using SpeechLib;
-using System;
+﻿using System;
 using System.Drawing;
 using System.Net;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -20,32 +18,10 @@ namespace MiniTranslation
         private bool isShow = false;
         private Speech speech;
         private StringBuilder soundText=new StringBuilder();
-        #region 内存回收
-        [DllImport("kernel32.dll", EntryPoint = "SetProcessWorkingSetSize")]
-        private static extern int SetProcessWorkingSetSize(IntPtr process, int minSize, int maxSize);
-        /// <summary>
-        /// 释放内存
-        /// </summary>
-        private static void ClearMemory(object source, System.Timers.ElapsedEventArgs e)
-        {
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            if (Environment.OSVersion.Platform == PlatformID.Win32NT)
-            {
-                main.SetProcessWorkingSetSize(System.Diagnostics.Process.GetCurrentProcess().Handle, -1, -1);
-            }
-        }
-        #endregion
         public main()
         {
             InitializeComponent();
-            this.Hide();
-            //初始speech
             speech = new Speech();
-            System.Timers.Timer timer = new System.Timers.Timer(10000);
-            timer.Elapsed += new System.Timers.ElapsedEventHandler(ClearMemory);
-            timer.AutoReset = true;
-            timer.Enabled = true;
         }
         //URL编码
         public static string UrlEncode(string str)
@@ -198,14 +174,14 @@ namespace MiniTranslation
 
         private void textBox_KeyPress(object sender, KeyPressEventArgs e)
         {
+            Console.WriteLine(e.KeyChar.ToString());
             switch (e.KeyChar)
             {
                 //粘贴键
-                //case '\u0016':
-                //    Console.Write("粘贴");
-                //    e.Handled = true;   //屏蔽粘贴
-                //    replaceClipboard();
-                //    break;
+                case '\u0016':
+                    //e.Handled = true;   //屏蔽粘贴
+                    //replaceClipboard();
+                    break;
                 //回车键
                 case '\r':
                     e.Handled = true;
