@@ -42,17 +42,20 @@
             // 
             // textBox
             // 
-            this.textBox.AcceptsReturn = true;
             this.textBox.AcceptsTab = true;
             this.textBox.CausesValidation = false;
             this.textBox.Font = new System.Drawing.Font("微软雅黑", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.textBox.HideSelection = false;
             this.textBox.ImeMode = System.Windows.Forms.ImeMode.HangulFull;
             this.textBox.Location = new System.Drawing.Point(13, 12);
             this.textBox.Margin = new System.Windows.Forms.Padding(0, 0, 13, 0);
-            this.textBox.MaxLength = 999999;
+            this.textBox.MaxLength = 99999999;
+            this.textBox.Multiline = true;
             this.textBox.Name = "textBox";
-            this.textBox.Size = new System.Drawing.Size(292, 23);
+            this.textBox.Size = new System.Drawing.Size(292, 21);
             this.textBox.TabIndex = 0;
+            this.textBox.WordWrap = false;
+            this.textBox.TextChanged += new System.EventHandler(this.textBox_TextChanged);
             this.textBox.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.textBox_KeyPress);
             // 
             // resultTextBox
