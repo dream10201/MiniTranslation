@@ -174,14 +174,13 @@ namespace MiniTranslation
 
         private void textBox_KeyPress(object sender, KeyPressEventArgs e)
         {
-            Console.WriteLine(e.KeyChar.ToString());
             switch (e.KeyChar)
             {
                 //粘贴键
-                case '\u0016':
+                //case '\u0016':
                     //e.Handled = true;   //屏蔽粘贴
-                    //replaceClipboard();
-                    break;
+                //    replaceClipboard();
+                //    break;
                 //回车键
                 case '\r':
                     e.Handled = true;
@@ -205,14 +204,18 @@ namespace MiniTranslation
         //替换剪切板文本内容
         public void replaceClipboard()
         {
+            Console.WriteLine(textBox.Text);
             IDataObject iData = Clipboard.GetDataObject();
             if (iData.GetDataPresent(DataFormats.Text))
             {
+                //if (iData.GetData(DataFormats.Text).ToString().IndexOf("\n") != -1) {
+                //    Clipboard.SetDataObject(iData.GetData(DataFormats.Text).ToString().Replace("\n", " "), true);
+                //}
                 //Clipboard.SetDataObject(iData.GetData(DataFormats.Text).ToString().Replace("\r\n", " ").Replace("\r", " ").Replace("\n", " ").Replace("\t", " "), true);
                 //设置文本框文本
                 //textBox.Text = iData.GetData(DataFormats.Text).ToString().Replace("\r\n", " ").Replace("\r", " ").Replace("\n", " ").Replace("\t", " ");
                 //开始翻译
-                ThreadPool.QueueUserWorkItem(new WaitCallback(Translation), this.textBox.Text);
+                //ThreadPool.QueueUserWorkItem(new WaitCallback(Translation), this.textBox.Text);
             }
         }
         private void read_MouseHover(object sender, EventArgs e)
@@ -231,6 +234,11 @@ namespace MiniTranslation
             {
                 speech.Voice(soundText.ToString());
             }
+        }
+        //替换文本框换行符
+        private void textBox_TextChanged(object sender, EventArgs e)
+        {
+            textBox.Text = textBox.Text.Replace("\r\n", " ");
         }
     }
 }
