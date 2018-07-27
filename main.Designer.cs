@@ -42,7 +42,7 @@
             // 
             // textBox
             // 
-            this.textBox.AcceptsTab = true;
+            this.textBox.AcceptsReturn = true;
             this.textBox.CausesValidation = false;
             this.textBox.Font = new System.Drawing.Font("微软雅黑", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.textBox.HideSelection = false;
