@@ -51,10 +51,10 @@
     <RunCodeAnalysis>true</RunCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup>
-    <ManifestCertificateThumbprint>7C5613E81129095B5689130A1DDB412995728726</ManifestCertificateThumbprint>
+    <ManifestCertificateThumbprint>D1E4518D75AEA51E1E88C9A2DCA8AA16EB168BC3</ManifestCertificateThumbprint>
   </PropertyGroup>
   <PropertyGroup>
-    <ManifestKeyFile>MinTranslation_TemporaryKey.pfx</ManifestKeyFile>
+    <ManifestKeyFile>MiniTranslation_TemporaryKey.pfx</ManifestKeyFile>
   </PropertyGroup>
   <PropertyGroup>
     <GenerateManifests>true</GenerateManifests>
@@ -112,6 +112,7 @@
       <DesignTime>True</DesignTime>
     </Compile>
     <None Include="app.config" />
+    <None Include="MiniTranslation_TemporaryKey.pfx" />
     <None Include="Properties\app.manifest" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>

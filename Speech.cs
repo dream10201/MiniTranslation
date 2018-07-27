@@ -1,15 +1,11 @@
 ﻿using SpeechLib;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace MiniTranslation
 {
     class Speech
     {
-        private SpVoice spVoice;
-        private static bool flag=true;
+        private SpVoice spVoice = null;
         public Speech() {
             try { 
                 spVoice = new SpVoice();
@@ -19,12 +15,14 @@ namespace MiniTranslation
                 //voice.Speak(resultText);
             }
             catch (Exception e) {
-                flag = false;
+                spVoice = null;
             }
         }
         public void Voice(String text) {
-            if (!flag) return;
-            spVoice.Speak(text, SpeechVoiceSpeakFlags.SVSFlagsAsync | SpeechVoiceSpeakFlags.SVSFPurgeBeforeSpeak);
+            if (spVoice != null)
+            {
+                spVoice.Speak(text, SpeechVoiceSpeakFlags.SVSFlagsAsync | SpeechVoiceSpeakFlags.SVSFPurgeBeforeSpeak);
+            }
         }
 
     }

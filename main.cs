@@ -37,16 +37,17 @@ namespace MiniTranslation
         }
         //翻译
         private void Translation(Object obj) {
-            String text = obj.ToString().ToLower();
+            StringBuilder text = new StringBuilder();
+            text.Append(obj.ToString().ToLower());
             bool en = true; 
             StringBuilder url = new StringBuilder(googleUrl);
             int zhNum = 0, enNum = 0;
-            for (int i = 0; i < text.Length; i++)
+            for (int i = 0; i < text.ToString().Length; i++)
             {
                 //过滤数字
-                if (!int.TryParse(text[i].ToString(), out int n))
+                if (!int.TryParse(text.ToString()[i].ToString(), out int n))
                 {
-                    if (text[i] > 127)
+                    if (text.ToString()[i] > 127)
                     {
                         //汉字
                         zhNum++;
@@ -67,7 +68,7 @@ namespace MiniTranslation
             {
                 url.Append("zh-CN&tl=en&q=");
             }
-            url.Append(UrlEncode(text));
+            url.Append(UrlEncode(text.ToString()));
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls;
             HttpHelper httpHelper = new HttpHelper();
             HttpItem httpItem = new HttpItem();
@@ -75,24 +76,26 @@ namespace MiniTranslation
             httpItem.ResultType = ResultType.String;
             httpItem.Method = "post";
             HttpResult httpresult = httpHelper.GetHtml(httpItem);
-            String resultHtml = httpresult.Html;
+            StringBuilder resultHtml = new StringBuilder();
+            resultHtml.Append(httpresult.Html);
             //正则获取结果集
             Regex regex = new Regex("\\[\\\".*?\\\"");
-            MatchCollection mc = regex.Matches(resultHtml);
+            MatchCollection mc = regex.Matches(resultHtml.ToString());
             StringBuilder result = new StringBuilder();
             for (int i = 0; i < mc.Count; i++)
             {
                 result.Append(mc[i]);
             }
-            String resultText = result.ToString().Replace("\"", "").Replace("[", "");
+            StringBuilder resultText = new StringBuilder();
+            resultText.Append(result.ToString().Replace("\"", "").Replace("[", ""));
             this.BeginInvoke(new Action(()=> {
-                this.resultTextBox.Text = resultText;
+                this.resultTextBox.Text = resultText.ToString();
                 //获取自动换行后的行数
                 int num = this.resultTextBox.GetLineFromCharIndex(this.resultTextBox.TextLength)+1;
                 this.resultTextBox.Size = new Size(this.resultTextBox.Width, num * 20);
             }));
             soundText.Clear();
-            soundText.Append(en ? resultText : text);
+            soundText.Append(en ? resultText.ToString() : text.ToString());
         }
         private void FormStatus(bool status) {
             if (status)
@@ -186,6 +189,11 @@ namespace MiniTranslation
                     e.Handled = true;
                     ThreadPool.QueueUserWorkItem(new WaitCallback(Translation), this.textBox.Text);
                     break;
+                //解决MultiLine=True之后，Ctrl+A 无法全选
+                case '\x1':
+                    ((TextBox)sender).SelectAll();
+                    e.Handled = true;
+                    break;
             }
         }
         //窗体Activated事件
@@ -199,23 +207,6 @@ namespace MiniTranslation
             //Esc
             if (e.KeyChar == '\u001b') {
                 FormStatus(false);
-            }
-        }
-        //替换剪切板文本内容
-        public void replaceClipboard()
-        {
-            Console.WriteLine(textBox.Text);
-            IDataObject iData = Clipboard.GetDataObject();
-            if (iData.GetDataPresent(DataFormats.Text))
-            {
-                //if (iData.GetData(DataFormats.Text).ToString().IndexOf("\n") != -1) {
-                //    Clipboard.SetDataObject(iData.GetData(DataFormats.Text).ToString().Replace("\n", " "), true);
-                //}
-                //Clipboard.SetDataObject(iData.GetData(DataFormats.Text).ToString().Replace("\r\n", " ").Replace("\r", " ").Replace("\n", " ").Replace("\t", " "), true);
-                //设置文本框文本
-                //textBox.Text = iData.GetData(DataFormats.Text).ToString().Replace("\r\n", " ").Replace("\r", " ").Replace("\n", " ").Replace("\t", " ");
-                //开始翻译
-                //ThreadPool.QueueUserWorkItem(new WaitCallback(Translation), this.textBox.Text);
             }
         }
         private void read_MouseHover(object sender, EventArgs e)
@@ -238,7 +229,10 @@ namespace MiniTranslation
         //替换文本框换行符
         private void textBox_TextChanged(object sender, EventArgs e)
         {
-            textBox.Text = textBox.Text.Replace("\r\n", " ");
+            StringBuilder temp = new StringBuilder();
+            temp.Append(textBox.Text.Replace("\r\n", " ").Replace("\r"," ").Replace("\n", " ").Replace("\t", " "));
+            //去除多余空格
+            textBox.Text = Regex.Replace(temp.ToString(), "\\s{2,}", " ");
         }
     }
 }
