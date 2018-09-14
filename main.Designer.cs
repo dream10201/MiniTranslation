@@ -46,7 +46,7 @@
             this.textBox.CausesValidation = false;
             this.textBox.Font = new System.Drawing.Font("微软雅黑", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.textBox.HideSelection = false;
-            this.textBox.ImeMode = System.Windows.Forms.ImeMode.HangulFull;
+            this.textBox.ImeMode = System.Windows.Forms.ImeMode.On;
             this.textBox.Location = new System.Drawing.Point(13, 12);
             this.textBox.Margin = new System.Windows.Forms.Padding(0, 0, 13, 0);
             this.textBox.MaxLength = 99999999;
@@ -57,6 +57,7 @@
             this.textBox.WordWrap = false;
             this.textBox.TextChanged += new System.EventHandler(this.textBox_TextChanged);
             this.textBox.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.textBox_KeyPress);
+            this.textBox.KeyUp += new System.Windows.Forms.KeyEventHandler(this.textBox_KeyUp);
             // 
             // resultTextBox
             // 
@@ -91,19 +92,19 @@
             this.Show_ToolStripMenuItem,
             this.Exit_ToolStripMenuItem});
             this.contextMenuStrip_notifyIcon.Name = "contextMenuStrip_notifyIcon";
-            this.contextMenuStrip_notifyIcon.Size = new System.Drawing.Size(95, 48);
+            this.contextMenuStrip_notifyIcon.Size = new System.Drawing.Size(101, 48);
             // 
             // Show_ToolStripMenuItem
             // 
             this.Show_ToolStripMenuItem.Name = "Show_ToolStripMenuItem";
-            this.Show_ToolStripMenuItem.Size = new System.Drawing.Size(94, 22);
+            this.Show_ToolStripMenuItem.Size = new System.Drawing.Size(100, 22);
             this.Show_ToolStripMenuItem.Text = "显示";
             this.Show_ToolStripMenuItem.Click += new System.EventHandler(this.Show_ToolStripMenuItem_Click);
             // 
             // Exit_ToolStripMenuItem
             // 
             this.Exit_ToolStripMenuItem.Name = "Exit_ToolStripMenuItem";
-            this.Exit_ToolStripMenuItem.Size = new System.Drawing.Size(94, 22);
+            this.Exit_ToolStripMenuItem.Size = new System.Drawing.Size(100, 22);
             this.Exit_ToolStripMenuItem.Text = "退出";
             this.Exit_ToolStripMenuItem.Click += new System.EventHandler(this.Exit_ToolStripMenuItem_Click);
             // 
@@ -114,7 +115,7 @@
             this.read.Location = new System.Drawing.Point(309, 13);
             this.read.Name = "read";
             this.read.Size = new System.Drawing.Size(20, 19);
-            this.read.TabIndex = 2;
+            this.read.TabIndex = 1;
             this.read.Text = "R";
             this.read.MouseClick += new System.Windows.Forms.MouseEventHandler(this.read_MouseClick);
             this.read.MouseHover += new System.EventHandler(this.read_MouseHover);
@@ -125,14 +126,16 @@
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.AutoSize = true;
             this.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.AutoValidate = System.Windows.Forms.AutoValidate.Disable;
             this.BackgroundImageLayout = System.Windows.Forms.ImageLayout.None;
             this.CausesValidation = false;
             this.ClientSize = new System.Drawing.Size(339, 47);
             this.Controls.Add(this.read);
             this.Controls.Add(this.resultTextBox);
             this.Controls.Add(this.textBox);
+            this.DoubleBuffered = true;
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
-            this.ImeMode = System.Windows.Forms.ImeMode.Off;
+            this.ImeMode = System.Windows.Forms.ImeMode.On;
             this.KeyPreview = true;
             this.MaximizeBox = false;
             this.MinimizeBox = false;

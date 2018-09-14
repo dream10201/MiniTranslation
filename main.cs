@@ -177,6 +177,9 @@ namespace MiniTranslation
 
         private void textBox_KeyPress(object sender, KeyPressEventArgs e)
         {
+            StringBuilder key = new StringBuilder();
+            key.Append(e.KeyChar);
+            System.Console.WriteLine(key.ToString());
             switch (e.KeyChar)
             {
                 //粘贴键
@@ -200,6 +203,7 @@ namespace MiniTranslation
         private void main_Activated(object sender, EventArgs e)
         {
             this.textBox.Focus();
+            this.textBox.SelectionStart = this.textBox.Text.Length;
         }
 
         private void main_KeyPress(object sender, KeyPressEventArgs e)
@@ -214,9 +218,12 @@ namespace MiniTranslation
             //朗读英文,停止上一朗读
             speech.Voice(soundText.ToString());
         }
-        //朗读标签鼠标点击时间
+        //朗读标签鼠标点击事件
         private void read_MouseClick(object sender, MouseEventArgs e)
         {
+            Reading();
+        }
+        public void Reading() {
             if (this.resultTextBox.Height == 0)
             {
                 speech.Voice("You're the best");
@@ -226,13 +233,35 @@ namespace MiniTranslation
                 speech.Voice(soundText.ToString());
             }
         }
+        private static readonly String[] symbols = { "\r\n", "\r", "\n", "\t","*","/","\\","#","<",">",};
         //替换文本框换行符
         private void textBox_TextChanged(object sender, EventArgs e)
         {
-            StringBuilder temp = new StringBuilder();
-            temp.Append(textBox.Text.Replace("\r\n", " ").Replace("\r"," ").Replace("\n", " ").Replace("\t", " "));
+
+            //StringBuilder temp = new StringBuilder();
+            String temp = textBox.Text;
+            for (int i = 0; i < symbols.Length; i++) {
+                temp = temp.Replace(symbols[i], " ");
+            }
+            //temp.Append(textBox.Text.Replace("\r\n", " ").Replace("\r"," ").Replace("\n", " ").Replace("\t", " "));
             //去除多余空格
-            textBox.Text = Regex.Replace(temp.ToString(), "\\s{2,}", " ");
+            textBox.Text = Regex.Replace(temp, "\\s{2,}", " ");
+        }
+
+        private void textBox_KeyUp(object sender, KeyEventArgs e)
+        {
+            System.Console.WriteLine(e.KeyCode.ToString());
+            switch (e.KeyCode.ToString()) {
+                case "Menu":
+                    //通知系统，执行完毕，防止Alt键使TextBox丢失焦点导致界面显示后第一个按键无法输入
+                    e.Handled = true;
+                    break;
+                case "Tab":
+                    //朗读
+                    Reading();
+                    e.Handled = true;
+                    break;
+            }
         }
     }
 }
