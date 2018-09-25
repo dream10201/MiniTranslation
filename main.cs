@@ -102,6 +102,7 @@ namespace MiniTranslation
             {
                 this.Show();
                 this.Activate();
+                this.textBox.SelectAll();
             }
             else {
                 speech.Voice("");
@@ -177,9 +178,6 @@ namespace MiniTranslation
 
         private void textBox_KeyPress(object sender, KeyPressEventArgs e)
         {
-            StringBuilder key = new StringBuilder();
-            key.Append(e.KeyChar);
-            System.Console.WriteLine(key.ToString());
             switch (e.KeyChar)
             {
                 //粘贴键
@@ -233,24 +231,22 @@ namespace MiniTranslation
                 speech.Voice(soundText.ToString());
             }
         }
-        private static readonly String[] symbols = { "\r\n", "\r", "\n", "\t","*","/","\\","#","<",">",};
+        private static readonly String[] symbols = { "\r\n", "\r", "\n", "\t","*","#","<",">",};
         //替换文本框换行符
         private void textBox_TextChanged(object sender, EventArgs e)
         {
-
-            //StringBuilder temp = new StringBuilder();
+            int position = this.textBox.SelectionStart;
             String temp = textBox.Text;
             for (int i = 0; i < symbols.Length; i++) {
                 temp = temp.Replace(symbols[i], " ");
             }
-            //temp.Append(textBox.Text.Replace("\r\n", " ").Replace("\r"," ").Replace("\n", " ").Replace("\t", " "));
             //去除多余空格
             textBox.Text = Regex.Replace(temp, "\\s{2,}", " ");
+            this.textBox.SelectionStart = position;
         }
 
         private void textBox_KeyUp(object sender, KeyEventArgs e)
         {
-            System.Console.WriteLine(e.KeyCode.ToString());
             switch (e.KeyCode.ToString()) {
                 case "Menu":
                     //通知系统，执行完毕，防止Alt键使TextBox丢失焦点导致界面显示后第一个按键无法输入
