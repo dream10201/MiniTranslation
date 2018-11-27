@@ -231,7 +231,7 @@ namespace MiniTranslation
                 speech.Voice(soundText.ToString());
             }
         }
-        private static readonly String[] symbols = { "\r\n", "\r", "\n", "\t","*","#","<",">",};
+        private static readonly String[] symbols = { "\r\n", "\r", "\n", "\t","#","<p>", "</p>", "<", ">", "//", "/*", "/**", "*/", "**/", "*" };
         //替换文本框换行符
         private void textBox_TextChanged(object sender, EventArgs e)
         {
