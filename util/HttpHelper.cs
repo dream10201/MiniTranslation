@@ -19,7 +19,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Net.Security;
 using System.Linq;
 
-namespace MiniTranslation
+namespace MiniTranslation.util
 {
     /// <summary>
     /// Http连接操作帮助类

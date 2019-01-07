@@ -1,7 +1,7 @@
 ﻿using SpeechLib;
 using System;
 
-namespace MiniTranslation
+namespace MiniTranslation.util
 {
     class Speech
     {
