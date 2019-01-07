@@ -1,4 +1,6 @@
-﻿using System;
+﻿using MiniTranslation.resource;
+using MiniTranslation.util;
+using System;
 using System.Drawing;
 using System.Net;
 using System.Text;
@@ -10,11 +12,6 @@ namespace MiniTranslation
 {
     public partial class main : Form
     {
-        private const String googleUrl = "https://translate.google.cn/translate_a/single?client=gtx&dt=t&sl=";
-        private const int WM_HOTKEY = 0x312; //窗口消息-热键  
-        private const int WM_CREATE = 0x1; //窗口消息-创建  
-        private const int WM_DESTROY = 0x2; //窗口消息-销毁  
-        private const int Space = 0x3572; //热键ID
         private bool isShow = false;
         private Speech speech;
         private StringBuilder soundText=new StringBuilder();
@@ -40,7 +37,7 @@ namespace MiniTranslation
             StringBuilder text = new StringBuilder();
             text.Append(obj.ToString().ToLower());
             bool en = true; 
-            StringBuilder url = new StringBuilder(googleUrl);
+            StringBuilder url = new StringBuilder(Constant.TranslateURL);
             int zhNum = 0, enNum = 0;
             for (int i = 0; i < text.ToString().Length; i++)
             {
@@ -116,10 +113,10 @@ namespace MiniTranslation
             base.WndProc(ref m);
             switch (m.Msg)
             {
-                case WM_HOTKEY: //窗口消息-热键ID  
+                case Constant.WM_HOTKEY: //窗口消息-热键ID  
                     switch (m.WParam.ToInt32())
                     {
-                        case Space: //热键ID  
+                        case Constant.HOTKeyID: //热键ID  
                             if (isShow) {
                                 FormStatus(false);
                             }
@@ -132,11 +129,11 @@ namespace MiniTranslation
                             break;
                     }
                     break;
-                case WM_CREATE: //窗口消息-创建  
-                    AppHotKey.RegKey(Handle, Space,  AppHotKey.KeyModifiers.Alt, Keys.Q);
+                case Constant.WM_CREATE: //窗口消息-创建  
+                    AppHotKey.RegKey(Handle, Constant.HOTKeyID,  AppHotKey.KeyModifiers.Alt, Keys.Q);
                     break;
-                case WM_DESTROY: //窗口消息-销毁
-                    AppHotKey.UnRegKey(Handle, Space); //销毁热键  
+                case Constant.WM_DESTROY: //窗口消息-销毁
+                    AppHotKey.UnRegKey(Handle, Constant.HOTKeyID); //销毁热键  
                     break;
                 default:
                     break;
@@ -157,7 +154,7 @@ namespace MiniTranslation
         private void Exit_ToolStripMenuItem_Click(object sender, EventArgs e)
         {
             //退出程序
-            AppHotKey.UnRegKey(Handle, Space); //销毁热键
+            AppHotKey.UnRegKey(Handle, Constant.HOTKeyID); //销毁热键
             this.notifyIcon.Dispose();
             this.Dispose();
             Environment.Exit(0);
@@ -231,7 +228,7 @@ namespace MiniTranslation
                 speech.Voice(soundText.ToString());
             }
         }
-        private static readonly String[] symbols = { "\r\n", "\r", "\n", "\t","#","<p>", "</p>", "<", ">", "//", "/*", "/**", "*/", "**/", "*" };
+        private static readonly String[] symbols = { "\r\n", "\r", "\n", "\t","#","<p>", "</p>", "<", ">", "//", "/*", "/**", "*/", "**/", "*","_" };
         //替换文本框换行符
         private void textBox_TextChanged(object sender, EventArgs e)
         {

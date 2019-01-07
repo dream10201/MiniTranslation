@@ -2,7 +2,7 @@
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
-namespace MiniTranslation
+namespace MiniTranslation.util
 {
     class AppHotKey
     {
