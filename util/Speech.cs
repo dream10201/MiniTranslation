@@ -15,6 +15,7 @@ namespace MiniTranslation.util
                 //voice.Speak(resultText);
             }
             catch (Exception e) {
+                Console.WriteLine(e.Message);
                 spVoice = null;
             }
         }
