@@ -1,4 +1,5 @@
-﻿using MiniTranslation.resource;
+﻿using Microsoft.Win32;
+using MiniTranslation.resource;
 using MiniTranslation.util;
 using System;
 using System.Drawing;
@@ -18,7 +19,14 @@ namespace MiniTranslation
         public main()
         {
             InitializeComponent();
+            SystemEvents.SessionEnding += new SessionEndingEventHandler(SystemEvents_SessionEnding);
             speech = new Speech();
+        }
+        private void SystemEvents_SessionEnding(object sender, SessionEndingEventArgs e)
+        {
+            //e.Cancel = false;
+            //直接结束
+            Exit_ToolStripMenuItem_Click(null, null);
         }
         //URL编码
         public static string UrlEncode(string str)

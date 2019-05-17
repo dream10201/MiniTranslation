@@ -92,19 +92,19 @@
             this.Show_ToolStripMenuItem,
             this.Exit_ToolStripMenuItem});
             this.contextMenuStrip_notifyIcon.Name = "contextMenuStrip_notifyIcon";
-            this.contextMenuStrip_notifyIcon.Size = new System.Drawing.Size(101, 48);
+            this.contextMenuStrip_notifyIcon.Size = new System.Drawing.Size(181, 70);
             // 
             // Show_ToolStripMenuItem
             // 
             this.Show_ToolStripMenuItem.Name = "Show_ToolStripMenuItem";
-            this.Show_ToolStripMenuItem.Size = new System.Drawing.Size(100, 22);
+            this.Show_ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.Show_ToolStripMenuItem.Text = "显示";
             this.Show_ToolStripMenuItem.Click += new System.EventHandler(this.Show_ToolStripMenuItem_Click);
             // 
             // Exit_ToolStripMenuItem
             // 
             this.Exit_ToolStripMenuItem.Name = "Exit_ToolStripMenuItem";
-            this.Exit_ToolStripMenuItem.Size = new System.Drawing.Size(100, 22);
+            this.Exit_ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.Exit_ToolStripMenuItem.Text = "退出";
             this.Exit_ToolStripMenuItem.Click += new System.EventHandler(this.Exit_ToolStripMenuItem_Click);
             // 
