@@ -19,14 +19,15 @@ namespace MiniTranslation
         public main()
         {
             InitializeComponent();
-            SystemEvents.SessionEnding += new SessionEndingEventHandler(SystemEvents_SessionEnding);
             speech = new Speech();
         }
-        private void SystemEvents_SessionEnding(object sender, SessionEndingEventArgs e)
+        protected override void DefWndProc(ref Message m)
         {
-            //e.Cancel = false;
-            //直接结束
-            Exit_ToolStripMenuItem_Click(null, null);
+            base.DefWndProc(ref m);
+            if (m.LParam == ((IntPtr)0x00000001) || m.LParam == ((IntPtr)0x40000000) || m.LParam == ((IntPtr)0x80000000))
+            {
+                Exit_ToolStripMenuItem_Click(null, null);
+            }
         }
         //URL编码
         public static string UrlEncode(string str)
