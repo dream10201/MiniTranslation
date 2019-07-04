@@ -1,5 +1,4 @@
-﻿using Microsoft.Win32;
-using MiniTranslation.resource;
+﻿using MiniTranslation.resource;
 using MiniTranslation.util;
 using System;
 using System.Drawing;
@@ -16,18 +15,20 @@ namespace MiniTranslation
         private bool isShow = false;
         private Speech speech;
         private StringBuilder soundText=new StringBuilder();
+        private Regex regex = new Regex("(?<=\\[\\\").*?(?=\\\")");
+        //替换掉翻译结果中的id
+        private Regex rreplaceid = new Regex("\\[\\[\\[\\\"[0-9a-z]+\\\"");
+        HttpHelper httpHelper = new HttpHelper();
+        HttpItem httpItem = new HttpItem();
+        bool en = true;
+        int zhNum = 0, enNum = 0;
         public main()
         {
             InitializeComponent();
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls;
+            httpItem.ResultType = ResultType.String;
+            httpItem.Method = "post";
             speech = new Speech();
-        }
-        protected override void DefWndProc(ref Message m)
-        {
-            base.DefWndProc(ref m);
-            if (m.LParam == ((IntPtr)0x00000001) || m.LParam == ((IntPtr)0x40000000) || m.LParam == ((IntPtr)0x80000000))
-            {
-                Exit_ToolStripMenuItem_Click(null, null);
-            }
         }
         //URL编码
         public static string UrlEncode(string str)
@@ -43,17 +44,18 @@ namespace MiniTranslation
         }
         //翻译
         private void Translation(Object obj) {
-            StringBuilder text = new StringBuilder();
-            text.Append(obj.ToString().ToLower());
-            bool en = true; 
+            en = true;
             StringBuilder url = new StringBuilder(Constant.TranslateURL);
-            int zhNum = 0, enNum = 0;
+            zhNum = 0;
+            enNum = 0;
+            string text = obj.ToString();
             for (int i = 0; i < text.ToString().Length; i++)
             {
+                char tc = text.ToString()[i];
                 //过滤数字
-                if (!int.TryParse(text.ToString()[i].ToString(), out int n))
+                if (!int.TryParse(tc.ToString(), out int n))
                 {
-                    if (text.ToString()[i] > 127)
+                    if (tc > 127)
                     {
                         //汉字
                         zhNum++;
@@ -74,34 +76,25 @@ namespace MiniTranslation
             {
                 url.Append("zh-CN&tl=en&q=");
             }
-            url.Append(UrlEncode(text.ToString()));
-            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls;
-            HttpHelper httpHelper = new HttpHelper();
-            HttpItem httpItem = new HttpItem();
+            url.Append(UrlEncode(text));
             httpItem.URL = url.ToString();
-            httpItem.ResultType = ResultType.String;
-            httpItem.Method = "post";
             HttpResult httpresult = httpHelper.GetHtml(httpItem);
-            StringBuilder resultHtml = new StringBuilder();
-            resultHtml.Append(httpresult.Html);
             //正则获取结果集
-            Regex regex = new Regex("\\[\\\".*?\\\"");
-            MatchCollection mc = regex.Matches(resultHtml.ToString());
+            string str = rreplaceid.Replace(httpresult.Html, "");
+            MatchCollection mc = regex.Matches(str);
             StringBuilder result = new StringBuilder();
             for (int i = 0; i < mc.Count; i++)
             {
                 result.Append(mc[i]);
             }
-            StringBuilder resultText = new StringBuilder();
-            resultText.Append(result.ToString().Replace("\"", "").Replace("[", ""));
             this.BeginInvoke(new Action(()=> {
-                this.resultTextBox.Text = resultText.ToString();
+                this.resultTextBox.Text = result.ToString();
                 //获取自动换行后的行数
                 int num = this.resultTextBox.GetLineFromCharIndex(this.resultTextBox.TextLength)+1;
                 this.resultTextBox.Size = new Size(this.resultTextBox.Width, num * 20);
             }));
             soundText.Clear();
-            soundText.Append(en ? resultText.ToString() : text.ToString());
+            soundText.Append(en ? result.ToString() : text);
         }
         private void FormStatus(bool status) {
             if (status)
@@ -119,9 +112,12 @@ namespace MiniTranslation
         //重写窗体的WndProc函数，在窗口创建的时候注册热键，窗口销毁时销毁热键
         protected override void WndProc(ref Message m)
         {
-            base.WndProc(ref m);
             switch (m.Msg)
             {
+                case Constant.WM_QUERYENDSESSION:
+                    Exit_ToolStripMenuItem_Click(null, null);
+                    m.Result = (IntPtr)0;
+                    break;
                 case Constant.WM_HOTKEY: //窗口消息-热键ID  
                     switch (m.WParam.ToInt32())
                     {
@@ -147,6 +143,7 @@ namespace MiniTranslation
                 default:
                     break;
             }
+            base.WndProc(ref m);
         }
 
         private void Main_Shown(object sender, EventArgs e)
@@ -194,7 +191,7 @@ namespace MiniTranslation
                 //回车键
                 case '\r':
                     e.Handled = true;
-                    ThreadPool.QueueUserWorkItem(new WaitCallback(Translation), this.textBox.Text);
+                    ThreadPool.QueueUserWorkItem(new WaitCallback(Translation), this.textBox.Text.ToLower());
                     break;
                 //解决MultiLine=True之后，Ctrl+A 无法全选
                 case '\x1':
