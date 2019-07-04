@@ -17,7 +17,7 @@ namespace MiniTranslation
         private StringBuilder soundText=new StringBuilder();
         private Regex regex = new Regex("(?<=\\[\\\").*?(?=\\\")");
         //替换掉翻译结果中的id
-        private Regex rreplaceid = new Regex("\\[\\[\\[\\\"[0-9a-z]+\\\"");
+        private Regex rreplaceid = new Regex("\\[\\[\\[\\\"[0-9a-z]+\\\"\\,\\\"\\\"\\]");
         HttpHelper httpHelper = new HttpHelper();
         HttpItem httpItem = new HttpItem();
         bool en = true;
@@ -80,6 +80,7 @@ namespace MiniTranslation
             httpItem.URL = url.ToString();
             HttpResult httpresult = httpHelper.GetHtml(httpItem);
             //正则获取结果集
+            //Console.WriteLine(httpresult.Html);
             string str = rreplaceid.Replace(httpresult.Html, "");
             MatchCollection mc = regex.Matches(str);
             StringBuilder result = new StringBuilder();
