@@ -1,6 +1,7 @@
 ﻿using MiniTranslation.resource;
 using MiniTranslation.util;
 using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.Net;
 using System.Text;
@@ -27,7 +28,7 @@ namespace MiniTranslation
             InitializeComponent();
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls;
             httpItem.ResultType = ResultType.String;
-            httpItem.Method = "post";
+            httpItem.Method = "GET";
             speech = new Speech();
         }
         //URL编码
@@ -67,7 +68,7 @@ namespace MiniTranslation
                     }
                 }
             }
-            //判断汉字和字母占比类决定翻译
+            //判断汉字和字母占比决定翻译方向
             if (enNum > zhNum) {
                 url.Append("en&tl=zh-CN&q=");
                 en = false;
@@ -78,9 +79,10 @@ namespace MiniTranslation
             }
             url.Append(UrlEncode(text));
             httpItem.URL = url.ToString();
+            Debug.WriteLine(url.ToString());
             HttpResult httpresult = httpHelper.GetHtml(httpItem);
             //正则获取结果集
-            //Console.WriteLine(httpresult.Html);
+            Debug.WriteLine(httpresult.Html);
             string str = rreplaceid.Replace(httpresult.Html, "");
             MatchCollection mc = regex.Matches(str);
             StringBuilder result = new StringBuilder();
