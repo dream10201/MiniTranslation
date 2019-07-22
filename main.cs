@@ -19,18 +19,15 @@ namespace MiniTranslation
         private Regex regex = new Regex("(?<=\\[\\\").*?(?=\\\")");
         //替换掉翻译结果中的id
         private Regex rreplaceid = new Regex("\\[\\[\\[\\\"[0-9a-z]+\\\"\\,\\\"\\\"\\]");
-        HttpHelper httpHelper = new HttpHelper();
-        HttpItem httpItem = new HttpItem();
         bool en = true;
         int zhNum = 0, enNum = 0;
         public main()
         {
             InitializeComponent();
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls;
-            httpItem.ResultType = ResultType.String;
-            httpItem.Method = "GET";
             speech = new Speech();
         }
+
         //URL编码
         public static string UrlEncode(string str)
         {
@@ -78,12 +75,10 @@ namespace MiniTranslation
                 url.Append("zh-CN&tl=en&q=");
             }
             url.Append(UrlEncode(text));
-            httpItem.URL = url.ToString();
-            Debug.WriteLine(url.ToString());
-            HttpResult httpresult = httpHelper.GetHtml(httpItem);
+            string httpresult = HttpUtils.Get(url.ToString());
             //正则获取结果集
-            Debug.WriteLine(httpresult.Html);
-            string str = rreplaceid.Replace(httpresult.Html, "");
+            Debug.WriteLine(httpresult);
+            string str = rreplaceid.Replace(httpresult, "");
             MatchCollection mc = regex.Matches(str);
             StringBuilder result = new StringBuilder();
             for (int i = 0; i < mc.Count; i++)
