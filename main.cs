@@ -18,7 +18,7 @@ namespace MiniTranslation
         private StringBuilder soundText=new StringBuilder();
         private Regex regex = new Regex("(?<=\\[\\\").*?(?=\\\")");
         //替换掉翻译结果中的id
-        private Regex rreplaceid = new Regex("\\[\\[\\[\\\"[0-9a-z]+\\\"\\,\\\"\\\"\\]");
+        private Regex rreplaceid = new Regex("([0-9a-z]{32})");
         bool en = true;
         int zhNum = 0, enNum = 0;
         public main()
@@ -86,7 +86,7 @@ namespace MiniTranslation
                 result.Append(mc[i]);
             }
             this.BeginInvoke(new Action(()=> {
-                this.resultTextBox.Text = result.ToString();
+                this.resultTextBox.Text =result.ToString();
                 //获取自动换行后的行数
                 int num = this.resultTextBox.GetLineFromCharIndex(this.resultTextBox.TextLength)+1;
                 this.resultTextBox.Size = new Size(this.resultTextBox.Width, num * 20);
