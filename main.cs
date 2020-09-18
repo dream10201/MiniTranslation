@@ -4,6 +4,7 @@ using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.Net;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -15,10 +16,11 @@ namespace MiniTranslation
     {
         private bool isShow = false;
         private Speech speech;
-        private StringBuilder soundText=new StringBuilder();
-        private Regex regex = new Regex("(?<=\\[\\\").*?(?=\\\")");
-        //替换掉翻译结果中的id
-        private Regex rreplaceid = new Regex("([0-9a-z]{32})");
+        private StringBuilder soundText = new StringBuilder();
+        private const string enzh = "en&tl=zh-CN&q=";
+        private const string zhen = "zh-CN&tl=en&q=";
+
+        private Regex regex = new Regex("(?<=\\[\\\").+?(?=\\\",\\\")");
         bool en = true;
         int zhNum = 0, enNum = 0;
         public main()
@@ -41,7 +43,8 @@ namespace MiniTranslation
             return (sb.ToString());
         }
         //翻译
-        private void Translation(Object obj) {
+        private void Translation(Object obj)
+        {
             en = true;
             StringBuilder url = new StringBuilder(Constant.TranslateURL);
             zhNum = 0;
@@ -66,42 +69,41 @@ namespace MiniTranslation
                 }
             }
             //判断汉字和字母占比决定翻译方向
-            if (enNum > zhNum) {
-                url.Append("en&tl=zh-CN&q=");
+            if (enNum > zhNum)
+            {
+                url.Append(enzh);
                 en = false;
             }
             else
             {
-                url.Append("zh-CN&tl=en&q=");
+                url.Append(zhen);
             }
             url.Append(UrlEncode(text));
             string httpresult = HttpUtils.Get(url.ToString());
             //正则获取结果集
             Debug.WriteLine(httpresult);
-            string str = rreplaceid.Replace(httpresult, "");
-            MatchCollection mc = regex.Matches(str);
-            StringBuilder result = new StringBuilder();
-            for (int i = 0; i < mc.Count; i++)
+            httpresult = regex.Matches(httpresult).Count>0? regex.Matches(httpresult)[0].Value:"";
+            this.BeginInvoke(new Action(() =>
             {
-                result.Append(mc[i]);
-            }
-            this.BeginInvoke(new Action(()=> {
-                this.resultTextBox.Text =result.ToString();
+                this.resultTextBox.Text = httpresult.Replace(@"\""", "\"");
                 //获取自动换行后的行数
-                int num = this.resultTextBox.GetLineFromCharIndex(this.resultTextBox.TextLength)+1;
+                int num = this.resultTextBox.GetLineFromCharIndex(this.resultTextBox.TextLength) + 1;
                 this.resultTextBox.Size = new Size(this.resultTextBox.Width, num * 20);
             }));
             soundText.Clear();
-            soundText.Append(en ? result.ToString() : text);
+            soundText.Append(en ? httpresult : text);
+            Thread.CurrentThread.Abort();
         }
-        private void FormStatus(bool status) {
+        private void FormStatus(bool status)
+        {
             if (status)
             {
                 this.Show();
                 this.Activate();
                 this.textBox.SelectAll();
             }
-            else {
+            else
+            {
                 speech.Voice("");
                 this.Hide();
             }
@@ -120,7 +122,8 @@ namespace MiniTranslation
                     switch (m.WParam.ToInt32())
                     {
                         case Constant.HOTKeyID: //热键ID  
-                            if (isShow) {
+                            if (isShow)
+                            {
                                 FormStatus(false);
                             }
                             else
@@ -133,7 +136,9 @@ namespace MiniTranslation
                     }
                     break;
                 case Constant.WM_CREATE: //窗口消息-创建  
-                    AppHotKey.RegKey(Handle, Constant.HOTKeyID,  AppHotKey.KeyModifiers.Alt, Keys.Q);
+                    if (!AppHotKey.RegKey(Handle, Constant.HOTKeyID, AppHotKey.KeyModifiers.Alt, Keys.Q)) {
+                        Application.Exit();
+                    }
                     break;
                 case Constant.WM_DESTROY: //窗口消息-销毁
                     AppHotKey.UnRegKey(Handle, Constant.HOTKeyID); //销毁热键  
@@ -166,7 +171,8 @@ namespace MiniTranslation
         //鼠标左键显示窗体
         private void notifyIcon_MouseClick(object sender, MouseEventArgs e)
         {
-            if (e.Button == MouseButtons.Left) {
+            if (e.Button == MouseButtons.Left)
+            {
                 FormStatus(true);
             }
         }
@@ -183,7 +189,7 @@ namespace MiniTranslation
             {
                 //粘贴键
                 //case '\u0016':
-                    //e.Handled = true;   //屏蔽粘贴
+                //e.Handled = true;   //屏蔽粘贴
                 //    replaceClipboard();
                 //    break;
                 //回车键
@@ -203,12 +209,15 @@ namespace MiniTranslation
         {
             this.textBox.Focus();
             this.textBox.SelectionStart = this.textBox.Text.Length;
+            this.textBox.ImeMode = ImeMode.Off;
+            //ImmSimulateHotKey(this.Handle, IME_CHOTKEY_SHAPE_TOGGLE);  //转换成半角
         }
 
         private void main_KeyPress(object sender, KeyPressEventArgs e)
         {
             //Esc
-            if (e.KeyChar == '\u001b') {
+            if (e.KeyChar == '\u001b')
+            {
                 FormStatus(false);
             }
         }
@@ -222,25 +231,23 @@ namespace MiniTranslation
         {
             Reading();
         }
-        public void Reading() {
-            if (this.resultTextBox.Height == 0)
-            {
-                speech.Voice("You're the best");
-            }
-            else
+        public void Reading()
+        {
+            if (this.resultTextBox.Height > 0)
             {
                 speech.Voice(soundText.ToString());
             }
         }
-        private static readonly String[] symbols = { "\r\n", "\r", "\n", "\t","#","<p>", "</p>", "<", ">", "//", "/*", "/**", "*/", "**/", "*","_" };
+        //private static readonly String[] symbols = { "\r\n", "\r", "\n", "\t", "#", "<p>", "</p>", "<", ">", "//", "/*", "/**", "*/", "**/", "*", "_" };
         //替换文本框换行符
         private void textBox_TextChanged(object sender, EventArgs e)
         {
             int position = this.textBox.SelectionStart;
             String temp = textBox.Text;
-            for (int i = 0; i < symbols.Length; i++) {
+            /*for (int i = 0; i < symbols.Length; i++)
+            {
                 temp = temp.Replace(symbols[i], " ");
-            }
+            }*/
             //去除多余空格
             textBox.Text = Regex.Replace(temp, "\\s{2,}", " ");
             this.textBox.SelectionStart = position;
@@ -248,7 +255,8 @@ namespace MiniTranslation
 
         private void textBox_KeyUp(object sender, KeyEventArgs e)
         {
-            switch (e.KeyCode.ToString()) {
+            switch (e.KeyCode.ToString())
+            {
                 case "Menu":
                     //通知系统，执行完毕，防止Alt键使TextBox丢失焦点导致界面显示后第一个按键无法输入
                     e.Handled = true;

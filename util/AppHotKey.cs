@@ -41,7 +41,7 @@ namespace MiniTranslation.util
         /// <param name="hotKey_id">热键ID</param>  
         /// <param name="keyModifiers">组合键</param>  
         /// <param name="key">热键</param>  
-        public static void RegKey(IntPtr hwnd, int hotKey_id, KeyModifiers keyModifiers, Keys key)
+        public static bool RegKey(IntPtr hwnd, int hotKey_id, KeyModifiers keyModifiers, Keys key)
         {
             try
             {
@@ -52,9 +52,11 @@ namespace MiniTranslation.util
                     {
                         MessageBox.Show("注册热键失败！");
                     }
+                    return false;
                 }
             }
             catch (Exception) { }
+            return true;
         }
         /// <summary>  
         /// 注销热键  
