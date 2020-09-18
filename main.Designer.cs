@@ -46,7 +46,7 @@
             this.textBox.CausesValidation = false;
             this.textBox.Font = new System.Drawing.Font("微软雅黑", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.textBox.HideSelection = false;
-            this.textBox.ImeMode = System.Windows.Forms.ImeMode.On;
+            this.textBox.ImeMode = System.Windows.Forms.ImeMode.Katakana;
             this.textBox.Location = new System.Drawing.Point(13, 12);
             this.textBox.Margin = new System.Windows.Forms.Padding(0, 0, 13, 0);
             this.textBox.MaxLength = 99999999;
@@ -92,19 +92,19 @@
             this.Show_ToolStripMenuItem,
             this.Exit_ToolStripMenuItem});
             this.contextMenuStrip_notifyIcon.Name = "contextMenuStrip_notifyIcon";
-            this.contextMenuStrip_notifyIcon.Size = new System.Drawing.Size(181, 70);
+            this.contextMenuStrip_notifyIcon.Size = new System.Drawing.Size(101, 48);
             // 
             // Show_ToolStripMenuItem
             // 
             this.Show_ToolStripMenuItem.Name = "Show_ToolStripMenuItem";
-            this.Show_ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.Show_ToolStripMenuItem.Size = new System.Drawing.Size(100, 22);
             this.Show_ToolStripMenuItem.Text = "显示";
             this.Show_ToolStripMenuItem.Click += new System.EventHandler(this.Show_ToolStripMenuItem_Click);
             // 
             // Exit_ToolStripMenuItem
             // 
             this.Exit_ToolStripMenuItem.Name = "Exit_ToolStripMenuItem";
-            this.Exit_ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.Exit_ToolStripMenuItem.Size = new System.Drawing.Size(100, 22);
             this.Exit_ToolStripMenuItem.Text = "退出";
             this.Exit_ToolStripMenuItem.Click += new System.EventHandler(this.Exit_ToolStripMenuItem_Click);
             // 
@@ -135,7 +135,7 @@
             this.Controls.Add(this.textBox);
             this.DoubleBuffered = true;
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
-            this.ImeMode = System.Windows.Forms.ImeMode.On;
+            this.ImeMode = System.Windows.Forms.ImeMode.Katakana;
             this.KeyPreview = true;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
