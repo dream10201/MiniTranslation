@@ -17,10 +17,11 @@ namespace MiniTranslation
         private bool isShow = false;
         private Speech speech;
         private StringBuilder soundText = new StringBuilder();
+        private StringBuilder resultText = new StringBuilder();
         private const string enzh = "en&tl=zh-CN&q=";
         private const string zhen = "zh-CN&tl=en&q=";
 
-        private Regex regex = new Regex("(?<=\\[\\\").+?(?=\\\",\\\")");
+        private Regex regex = new Regex("(?<=\\[\\\").+?(?=\\\")");
         bool en = true;
         int zhNum = 0, enNum = 0;
         public main()
@@ -82,16 +83,21 @@ namespace MiniTranslation
             string httpresult = HttpUtils.Get(url.ToString());
             //正则获取结果集
             Debug.WriteLine(httpresult);
-            httpresult = regex.Matches(httpresult).Count>0? regex.Matches(httpresult)[0].Value:"";
+            resultText.Clear();
+            foreach(Match mh in regex.Matches(httpresult)) {
+                if (mh.Value.Length != 32 || !Regex.IsMatch(mh.Value,"[0-9a-z]{32}")) {
+                    resultText.Append(mh.Value);
+                }
+            }
             this.BeginInvoke(new Action(() =>
             {
-                this.resultTextBox.Text = httpresult.Replace(@"\""", "\"");
+                this.resultTextBox.Text = resultText.ToString().Replace(@"\""", "\"");
                 //获取自动换行后的行数
                 int num = this.resultTextBox.GetLineFromCharIndex(this.resultTextBox.TextLength) + 1;
                 this.resultTextBox.Size = new Size(this.resultTextBox.Width, num * 20);
             }));
             soundText.Clear();
-            soundText.Append(en ? httpresult : text);
+            soundText.Append(en ? resultText.ToString() : text);
             Thread.CurrentThread.Abort();
         }
         private void FormStatus(bool status)
@@ -195,6 +201,7 @@ namespace MiniTranslation
                 //回车键
                 case '\r':
                     e.Handled = true;
+                    textBox.Text = Regex.Replace(textBox.Text, "\\s{2,}", " ").Replace("\n","");
                     ThreadPool.QueueUserWorkItem(new WaitCallback(Translation), this.textBox.Text.ToLower());
                     break;
                 //解决MultiLine=True之后，Ctrl+A 无法全选
@@ -242,15 +249,15 @@ namespace MiniTranslation
         //替换文本框换行符
         private void textBox_TextChanged(object sender, EventArgs e)
         {
-            int position = this.textBox.SelectionStart;
+            /*int position = this.textBox.SelectionStart;
             String temp = textBox.Text;
-            /*for (int i = 0; i < symbols.Length; i++)
+            *//*for (int i = 0; i < symbols.Length; i++)
             {
                 temp = temp.Replace(symbols[i], " ");
-            }*/
+            }*//*
             //去除多余空格
             textBox.Text = Regex.Replace(temp, "\\s{2,}", " ");
-            this.textBox.SelectionStart = position;
+            this.textBox.SelectionStart = position;*/
         }
 
         private void textBox_KeyUp(object sender, KeyEventArgs e)
