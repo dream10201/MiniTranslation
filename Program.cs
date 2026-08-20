@@ -3,8 +3,15 @@ namespace MiniTranslation
     internal static class Program
     {
         [STAThread]
-        private static void Main()
+        private static void Main(string[] args)
         {
+            // 开机计划任务以管理员权限调用：把已就绪的新版本同步进安装目录后退出
+            if (args.Contains("--sync-base"))
+            {
+                Core.UpdateManager.SyncBase();
+                return;
+            }
+
             // 有已下载的更新版本则改为运行它（A/B 版本目录），本进程直接退出
             if (Core.UpdateManager.TryLaunchNewerAtStartup())
             {

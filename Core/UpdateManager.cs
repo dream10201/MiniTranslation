@@ -86,6 +86,38 @@ namespace MiniTranslation.Core
             Process.Start(new ProcessStartInfo(pending.ExePath) { UseShellExecute = true });
         }
 
+        /// <summary>
+        /// 把已就绪的新版本复制到本 exe 所在的安装目录（开机计划任务以管理员权限调用，
+        /// 让 Program Files 基底跟上版本）。只复制、不执行用户可写目录里的文件。
+        /// </summary>
+        public static void SyncBase()
+        {
+            try
+            {
+                string baseExe = Application.ExecutablePath;
+                string retired = baseExe + ".old";
+                // 上次换下的旧文件此时已不被占用，先清掉
+                if (File.Exists(retired)) File.Delete(retired);
+
+                var pending = GetPending();
+                if (pending == null) return;
+                // 运行中的 exe 不能覆盖但可以改名：换下自己，再把新版复制进来
+                File.Move(baseExe, retired);
+                try
+                {
+                    File.Copy(pending.ExePath, baseExe);
+                }
+                catch
+                {
+                    File.Move(retired, baseExe);
+                }
+            }
+            catch
+            {
+                // 非管理员权限运行或文件被占用时放弃，下次开机再试
+            }
+        }
+
         /// <summary>检查并静默下载解压新版本；已就绪时直接返回它。无新版本返回 null。</summary>
         public static async Task<PendingUpdate?> CheckAndDownloadAsync(Action<int>? onProgress = null)
         {
@@ -114,7 +146,7 @@ namespace MiniTranslation.Core
             return new PendingUpdate(version.ToString(), Path.Combine(versionDir, ExeName));
         }
 
-        /// <summary>删除比当前运行版本旧的版本目录；正被占用的留到下次清。</summary>
+        /// <summary>删除不比当前运行版本新的版本目录（自身所在的除外）；正被占用的留到下次清。</summary>
         private static void CleanupOldVersions()
         {
             try
@@ -124,7 +156,7 @@ namespace MiniTranslation.Core
                 foreach (string dir in Directory.GetDirectories(AppDir))
                 {
                     if (string.Equals(dir, self, StringComparison.OrdinalIgnoreCase)) continue;
-                    if (Version.TryParse(Path.GetFileName(dir), out var version) && version >= CurrentVersion) continue;
+                    if (Version.TryParse(Path.GetFileName(dir), out var version) && version > CurrentVersion) continue;
                     try
                     {
                         Directory.Delete(dir, recursive: true);
