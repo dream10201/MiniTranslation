@@ -354,7 +354,7 @@ namespace MiniTranslation
 
             try
             {
-                var result = await TranslationService.TranslateAsync(text, _settings, cts.Token);
+                var result = await TranslationRouter.TranslateAsync(text, _settings, cts.Token);
                 if (cts.IsCancellationRequested) return;
                 ShowResult(result.Text, isError: false);
                 _speakText = result.SourceIsChinese ? result.Text : text;

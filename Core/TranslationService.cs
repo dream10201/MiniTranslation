@@ -14,7 +14,7 @@ namespace MiniTranslation.Core
     {
         private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(60) };
 
-        public static async Task<TranslationResult> TranslateAsync(string text, AppSettings settings, CancellationToken ct = default)
+        public static async Task<TranslationResult> TranslateAsync(string text, ApiProfile profile, CancellationToken ct = default)
         {
             bool sourceIsChinese = IsMainlyChinese(text);
             // 腾讯混元 Hy-MT2 官方翻译模板（对通用聊天模型同样适用）
@@ -23,11 +23,11 @@ namespace MiniTranslation.Core
 
             var payload = new Dictionary<string, object>
             {
-                ["model"] = settings.Model,
+                ["model"] = profile.Model,
                 ["messages"] = new object[] { new { role = "user", content = prompt } },
                 ["stream"] = false,
             };
-            if (IsHunyuanMtModel(settings.Model))
+            if (IsHunyuanMtModel(profile.Model))
             {
                 // Hy-MT2 1.8B/7B 官方推荐采样参数；top_k/repetition_penalty 为
                 // vLLM 等本地推理服务的扩展参数，OpenAI 官方接口不接受，故仅对该模型附加
@@ -37,11 +37,11 @@ namespace MiniTranslation.Core
                 payload["repetition_penalty"] = 1.05;
             }
 
-            using var request = new HttpRequestMessage(HttpMethod.Post, BuildEndpoint(settings.ApiBaseUrl))
+            using var request = new HttpRequestMessage(HttpMethod.Post, BuildEndpoint(profile.ApiBaseUrl))
             {
                 Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"),
             };
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", settings.ApiKey);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", profile.ApiKey);
 
             using var response = await Http.SendAsync(request, ct).ConfigureAwait(false);
             string body = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
