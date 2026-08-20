@@ -28,7 +28,7 @@ namespace MiniTranslation
         private readonly Button _updateButton;
         private readonly Label _statusLabel;
         private bool _loadingFields;
-        private bool _updateAvailable;
+        private UpdateInfo? _update;
 
         public SettingsForm(AppSettings settings)
         {
@@ -353,12 +353,9 @@ namespace MiniTranslation
 
         private async Task CheckUpdateAsync()
         {
-            if (_updateAvailable)
+            if (_update != null)
             {
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(UpdateChecker.ReleasesUrl)
-                {
-                    UseShellExecute = true,
-                });
+                await StartUpdateAsync();
                 return;
             }
 
@@ -366,21 +363,47 @@ namespace MiniTranslation
             SetStatus("检查更新中…", isError: false);
             try
             {
-                string? newVersion = await UpdateChecker.CheckAsync();
-                if (newVersion == null)
+                var info = await UpdateChecker.CheckAsync();
+                if (info == null)
                 {
                     SetStatus("已是最新版本。", isError: false);
                 }
                 else
                 {
-                    SetStatus($"发现新版本 {newVersion}。", isError: false);
-                    _updateAvailable = true;
-                    _updateButton.Text = "前往下载";
+                    SetStatus($"发现新版本 {info.Version}。", isError: false);
+                    _update = info;
+                    _updateButton.Text = "立即更新";
                 }
             }
             finally
             {
                 _updateButton.Enabled = true;
+            }
+        }
+
+        private async Task StartUpdateAsync()
+        {
+            _updateButton.Enabled = false;
+            _saveButton.Enabled = false;
+            try
+            {
+                int lastPercent = -1;
+                await Updater.DownloadAndApplyAsync(_update!, percent =>
+                {
+                    if (percent != lastPercent)
+                    {
+                        lastPercent = percent;
+                        SetStatus($"下载更新 {percent}%", isError: false);
+                    }
+                });
+                SetStatus("更新已就绪，正在重启…", isError: false);
+                Application.Exit();
+            }
+            catch (Exception ex)
+            {
+                SetStatus("更新失败：" + ex.Message, isError: true);
+                _updateButton.Enabled = true;
+                _saveButton.Enabled = true;
             }
         }
 

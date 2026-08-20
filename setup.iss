@@ -36,4 +36,5 @@ Name: "{autoprograms}\MiniTranslation"; Filename: "{app}\MiniTranslation.exe"
 Name: "{userstartup}\MiniTranslation"; Filename: "{app}\MiniTranslation.exe"; Tasks: startup
 
 [Run]
-Filename: "{app}\MiniTranslation.exe"; Description: "启动 MiniTranslation"; Flags: nowait postinstall skipifsilent
+; 不加 skipifsilent：静默自动更新完成后也会重新拉起应用
+Filename: "{app}\MiniTranslation.exe"; Description: "启动 MiniTranslation"; Flags: nowait postinstall

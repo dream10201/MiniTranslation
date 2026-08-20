@@ -687,15 +687,28 @@ namespace MiniTranslation
         private async Task NotifyIfUpdateAvailableAsync()
         {
             await Task.Delay(TimeSpan.FromSeconds(10)); // 避开启动高峰
-            string? newVersion = await UpdateChecker.CheckAsync();
-            if (newVersion == null) return;
-            _notifyIcon.BalloonTipClicked += (_, _) =>
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(UpdateChecker.ReleasesUrl)
+            var update = await UpdateChecker.CheckAsync();
+            if (update == null) return;
+
+            bool updating = false;
+            _notifyIcon.BalloonTipClicked += async (_, _) =>
+            {
+                if (updating) return;
+                updating = true;
+                _notifyIcon.ShowBalloonTip(3000, "MiniTranslation", "正在下载更新，完成后将自动重启。", ToolTipIcon.Info);
+                try
                 {
-                    UseShellExecute = true,
-                });
+                    await Updater.DownloadAndApplyAsync(update);
+                    ExitApp();
+                }
+                catch (Exception ex)
+                {
+                    updating = false;
+                    _notifyIcon.ShowBalloonTip(3000, "MiniTranslation", "更新失败：" + ex.Message, ToolTipIcon.Error);
+                }
+            };
             _notifyIcon.ShowBalloonTip(5000, "MiniTranslation",
-                $"发现新版本 {newVersion}，点击前往下载。", ToolTipIcon.Info);
+                $"发现新版本 {update.Version}，点击自动更新。", ToolTipIcon.Info);
         }
 
         private void OpenSettings()
