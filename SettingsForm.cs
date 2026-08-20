@@ -25,8 +25,10 @@ namespace MiniTranslation
         private readonly CheckBox _autoUpdateCheck;
         private readonly Button _testButton;
         private readonly Button _saveButton;
+        private readonly Button _updateButton;
         private readonly Label _statusLabel;
         private bool _loadingFields;
+        private bool _updateAvailable;
 
         public SettingsForm(AppSettings settings)
         {
@@ -41,7 +43,7 @@ namespace MiniTranslation
             MinimizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
             BackColor = Color.White;
-            ClientSize = new Size(500, 664);
+            ClientSize = new Size(500, 710);
 
             const int labelX = 24, inputX = 110, inputW = 366, buttonW = 92;
 
@@ -158,7 +160,13 @@ namespace MiniTranslation
                 Checked = settings.AutoCheckUpdate,
             };
             Controls.Add(_autoUpdateCheck);
-            y += 44;
+            y += 40;
+
+            AddLabel($"版本 {Application.ProductVersion.Split('+', '-')[0]}", labelX, y + 6);
+            _updateButton = CreateButton("检查更新", new Point(inputX, y), false);
+            _updateButton.Click += async (_, _) => await CheckUpdateAsync();
+            Controls.Add(_updateButton);
+            y += 46;
 
             _statusLabel = new Label
             {
@@ -340,6 +348,39 @@ namespace MiniTranslation
             finally
             {
                 _testButton.Enabled = true;
+            }
+        }
+
+        private async Task CheckUpdateAsync()
+        {
+            if (_updateAvailable)
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(UpdateChecker.ReleasesUrl)
+                {
+                    UseShellExecute = true,
+                });
+                return;
+            }
+
+            _updateButton.Enabled = false;
+            SetStatus("检查更新中…", isError: false);
+            try
+            {
+                string? newVersion = await UpdateChecker.CheckAsync();
+                if (newVersion == null)
+                {
+                    SetStatus("已是最新版本。", isError: false);
+                }
+                else
+                {
+                    SetStatus($"发现新版本 {newVersion}。", isError: false);
+                    _updateAvailable = true;
+                    _updateButton.Text = "前往下载";
+                }
+            }
+            finally
+            {
+                _updateButton.Enabled = true;
             }
         }
 
