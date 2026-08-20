@@ -176,7 +176,8 @@ namespace MiniTranslation
             get
             {
                 var cp = base.CreateParams;
-                cp.ClassStyle |= 0x20000; // CS_DROPSHADOW
+                cp.ClassStyle |= 0x20000;    // CS_DROPSHADOW
+                cp.ExStyle |= 0x02000000;    // WS_EX_COMPOSITED：整窗合成绘制，消除子控件闪烁
                 return cp;
             }
         }
@@ -444,8 +445,13 @@ namespace MiniTranslation
 
             try
             {
+                // 流式刷新节流到 80ms 一次，避免高频调整窗体导致闪烁；
+                // 完成后仍会用完整译文收尾，不会丢字
+                var throttle = System.Diagnostics.Stopwatch.StartNew();
                 var result = await TranslationRouter.TranslateAsync(text, _settings, partial =>
                 {
+                    if (throttle.ElapsedMilliseconds < 80) return;
+                    throttle.Restart();
                     // 回调来自线程池，需切回 UI 线程；换接口重试时全量覆盖
                     BeginInvoke(() =>
                     {
@@ -516,7 +522,12 @@ namespace MiniTranslation
             _speakLabel.Location = new Point(Margin_ - 2, _actionBarTop);
             _copyLabel.Location = new Point(_speakLabel.Right + 14, _actionBarTop);
             PositionStatusLabel();
-            ClientSize = new Size(_contentWidth + Margin_ * 2, _speakLabel.Bottom + 14);
+            var newSize = new Size(_contentWidth + Margin_ * 2, _speakLabel.Bottom + 14);
+            if (ClientSize != newSize)
+            {
+                ClientSize = newSize;
+                Invalidate(); // 强制整面重绘，清掉旧边框线残影
+            }
 
             if (Visible)
             {
