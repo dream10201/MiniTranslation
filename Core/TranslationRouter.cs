@@ -14,7 +14,8 @@ namespace MiniTranslation.Core
         private static readonly HashSet<string> Probing = new();
         private static AppSettings? _settings;
 
-        public static async Task<TranslationResult> TranslateAsync(string text, AppSettings settings, CancellationToken ct = default)
+        public static async Task<TranslationResult> TranslateAsync(
+            string text, AppSettings settings, Action<string>? onProgress = null, CancellationToken ct = default)
         {
             _settings = settings;
             var complete = settings.Profiles.Where(p => p.IsComplete).ToList();
@@ -39,7 +40,7 @@ namespace MiniTranslation.Core
                 ct.ThrowIfCancellationRequested();
                 try
                 {
-                    var result = await TranslationService.TranslateAsync(text, profile, ct).ConfigureAwait(false);
+                    var result = await TranslationService.TranslateAsync(text, profile, onProgress, ct).ConfigureAwait(false);
                     MarkHealthy(profile.Key);
                     return result;
                 }

@@ -12,6 +12,10 @@
     <Version>2.0.0</Version>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <SatelliteResourceLanguages>zh-Hans</SatelliteResourceLanguages>
+    <!-- 不依赖文化敏感排序/格式化，省去 ICU 加载 -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- 预编译为本机代码，加快冷启动（仅影响 publish） -->
+    <PublishReadyToRun>true</PublishReadyToRun>
     <!-- 允许在非 Windows 环境（CI/交叉编译）上构建 Windows 目标 -->
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
   </PropertyGroup>

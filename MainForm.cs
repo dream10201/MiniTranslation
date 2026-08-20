@@ -288,37 +288,41 @@ namespace MiniTranslation
             }
         }
 
-        /// <summary>向前台窗口模拟 Ctrl+C 抓取选中文本，再显示窗口并翻译。</summary>
+        /// <summary>向前台窗口模拟 Ctrl+C 抓取选中文本，窗口先显示，剪贴板在后台轮询。</summary>
         private async Task ShowWithSelectionCaptureAsync()
         {
-            bool captured = false;
+            uint seqBefore = 0;
+            bool sent = false;
             try
             {
                 // 等热键的物理按键（Alt/Q 等）真正松开，否则注入的 Ctrl+C
-                // 会被残留的修饰键污染成 Ctrl+Alt+C 而被目标程序忽略
+                // 会被残留的修饰键污染成 Ctrl+Alt+C 而被目标程序忽略；
+                // 注入必须在本窗口显示（抢走焦点）之前完成
                 for (int i = 0; i < 10 && AnyHotKeyKeyDown(); i++)
                 {
                     await Task.Delay(30);
                 }
-
-                // 剪贴板序号只要发生过复制就会变化，与内容是否相同无关
-                uint seqBefore = GetClipboardSequenceNumber();
+                seqBefore = GetClipboardSequenceNumber();
                 SendCopyShortcut();
-                for (int i = 0; i < 12; i++)
-                {
-                    await Task.Delay(50);
-                    if (GetClipboardSequenceNumber() != seqBefore)
-                    {
-                        captured = true;
-                        break;
-                    }
-                }
+                sent = true;
             }
             catch
             {
             }
-            SetVisible(true); // 若开启了剪贴板自动翻译，常规逻辑已能接住新内容
-            if (captured) TryTranslateClipboard(force: true);
+
+            SetVisible(true);
+            if (!sent) return;
+
+            // 剪贴板序号只要发生过复制就会变化，与内容是否相同无关
+            for (int i = 0; i < 12; i++)
+            {
+                await Task.Delay(50);
+                if (GetClipboardSequenceNumber() != seqBefore)
+                {
+                    TryTranslateClipboard(force: true);
+                    return;
+                }
+            }
         }
 
         private static bool AnyHotKeyKeyDown() =>
@@ -433,7 +437,14 @@ namespace MiniTranslation
 
             try
             {
-                var result = await TranslationRouter.TranslateAsync(text, _settings, cts.Token);
+                var result = await TranslationRouter.TranslateAsync(text, _settings, partial =>
+                {
+                    // 回调来自线程池，需切回 UI 线程；换接口重试时全量覆盖
+                    BeginInvoke(() =>
+                    {
+                        if (_translateCts == cts) ShowResult(partial, isError: false);
+                    });
+                }, cts.Token);
                 if (cts.IsCancellationRequested) return;
                 ShowResult(result.Text, isError: false);
                 _speakText = result.SourceIsChinese ? result.Text : text;

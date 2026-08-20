@@ -12,9 +12,35 @@ namespace MiniTranslation.Core
     /// </summary>
     public static class TranslationService
     {
-        private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(60) };
+        private static readonly HttpClient Http = new(new SocketsHttpHandler
+        {
+            // 连不上的接口快速失败，便于路由及时降权切换
+            ConnectTimeout = TimeSpan.FromSeconds(5),
+        })
+        {
+            // 覆盖建连到收到响应头；流式响应体的读取由下方逐行看门狗控制
+            Timeout = TimeSpan.FromSeconds(20),
+        };
 
-        public static async Task<TranslationResult> TranslateAsync(string text, ApiProfile profile, CancellationToken ct = default)
+        private static readonly TimeSpan StreamIdleTimeout = TimeSpan.FromSeconds(30);
+
+        /// <summary>流式翻译；每收到一段增量，回调完整的已生成文本。</summary>
+        public static async Task<TranslationResult> TranslateAsync(
+            string text, ApiProfile profile, Action<string>? onProgress = null, CancellationToken ct = default)
+        {
+            try
+            {
+                return await TranslateCoreAsync(text, profile, onProgress, ct).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+            {
+                // HttpClient 超时或流式读取空闲超时，按接口故障处理而非用户取消
+                throw new TimeoutException("接口响应超时。");
+            }
+        }
+
+        private static async Task<TranslationResult> TranslateCoreAsync(
+            string text, ApiProfile profile, Action<string>? onProgress, CancellationToken ct)
         {
             bool sourceIsChinese = IsMainlyChinese(text);
             // 腾讯混元 Hy-MT2 官方翻译模板（对通用聊天模型同样适用）
@@ -25,7 +51,7 @@ namespace MiniTranslation.Core
             {
                 ["model"] = profile.Model,
                 ["messages"] = new object[] { new { role = "user", content = prompt } },
-                ["stream"] = false,
+                ["stream"] = true,
             };
             if (IsHunyuanMtModel(profile.Model))
             {
@@ -43,21 +69,69 @@ namespace MiniTranslation.Core
             };
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", profile.ApiKey);
 
-            using var response = await Http.SendAsync(request, ct).ConfigureAwait(false);
-            string body = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            using var response = await Http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
+                string body = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 throw new InvalidOperationException($"接口返回 {(int)response.StatusCode}：{Truncate(body, 300)}");
             }
 
-            using var doc = JsonDocument.Parse(body);
-            string content = doc.RootElement
-                .GetProperty("choices")[0]
-                .GetProperty("message")
-                .GetProperty("content")
-                .GetString() ?? "";
-
+            string content = await ReadStreamedContentAsync(response, onProgress, ct).ConfigureAwait(false);
             return new TranslationResult(content.Trim(), sourceIsChinese);
+        }
+
+        /// <summary>解析 SSE 流；服务端不支持流式而直接返回完整 JSON 时自动兼容。</summary>
+        private static async Task<string> ReadStreamedContentAsync(
+            HttpResponseMessage response, Action<string>? onProgress, CancellationToken ct)
+        {
+            await using var stream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+            using var reader = new StreamReader(stream, Encoding.UTF8);
+            using var idleCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+
+            var content = new StringBuilder();
+            var rawBody = new StringBuilder();
+            bool sawSse = false;
+
+            while (true)
+            {
+                idleCts.CancelAfter(StreamIdleTimeout);
+                string? line = await reader.ReadLineAsync(idleCts.Token).ConfigureAwait(false);
+                if (line == null) break;
+
+                if (line.StartsWith("data:", StringComparison.Ordinal))
+                {
+                    sawSse = true;
+                    string data = line[5..].Trim();
+                    if (data == "[DONE]") break;
+                    if (data.Length == 0) continue;
+
+                    using var doc = JsonDocument.Parse(data);
+                    if (doc.RootElement.TryGetProperty("choices", out var choices) &&
+                        choices.GetArrayLength() > 0 &&
+                        choices[0].TryGetProperty("delta", out var delta) &&
+                        delta.TryGetProperty("content", out var piece) &&
+                        piece.ValueKind == JsonValueKind.String)
+                    {
+                        content.Append(piece.GetString());
+                        onProgress?.Invoke(content.ToString());
+                    }
+                }
+                else if (!sawSse)
+                {
+                    rawBody.Append(line);
+                }
+            }
+
+            if (!sawSse && rawBody.Length > 0)
+            {
+                using var doc = JsonDocument.Parse(rawBody.ToString());
+                content.Append(doc.RootElement
+                    .GetProperty("choices")[0]
+                    .GetProperty("message")
+                    .GetProperty("content")
+                    .GetString());
+            }
+            return content.ToString();
         }
 
         private static bool IsHunyuanMtModel(string model) =>
