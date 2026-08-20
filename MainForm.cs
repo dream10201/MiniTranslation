@@ -146,6 +146,10 @@ namespace MiniTranslation
                 _inputBox.Focus();
                 _inputBox.SelectionStart = _inputBox.TextLength;
             };
+            Deactivate += (_, _) =>
+            {
+                if (_settings.HideOnFocusLost && _isShown) SetVisible(false);
+            };
             FormClosing += (_, e) =>
             {
                 if (e.CloseReason == CloseReason.UserClosing)

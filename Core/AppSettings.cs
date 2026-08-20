@@ -48,6 +48,7 @@ namespace MiniTranslation.Core
         public bool AutoTranslateClipboard { get; set; } = true;
         public bool AutoTranslateSelection { get; set; } = false;
         public string HotKey { get; set; } = "Alt+Q";
+        public bool HideOnFocusLost { get; set; } = false;
 
         [JsonIgnore]
         public bool IsConfigured => Profiles.Any(p => p.IsComplete);

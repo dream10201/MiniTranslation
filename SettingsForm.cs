@@ -19,6 +19,7 @@ namespace MiniTranslation
         private readonly TextBox _hotKeyBox;
         private readonly CheckBox _clipboardCheck;
         private readonly CheckBox _selectionCheck;
+        private readonly CheckBox _hideOnFocusLostCheck;
         private readonly Button _testButton;
         private readonly Button _saveButton;
         private readonly Label _statusLabel;
@@ -37,7 +38,7 @@ namespace MiniTranslation
             MinimizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
             BackColor = Color.White;
-            ClientSize = new Size(500, 520);
+            ClientSize = new Size(500, 556);
 
             const int labelX = 24, inputX = 110, inputW = 366, buttonW = 92;
 
@@ -110,6 +111,17 @@ namespace MiniTranslation
                 Checked = settings.AutoTranslateSelection,
             };
             Controls.Add(_selectionCheck);
+            y += 36;
+
+            _hideOnFocusLostCheck = new CheckBox
+            {
+                AutoSize = true,
+                Location = new Point(inputX, y),
+                ForeColor = TextMain,
+                Text = "失去焦点时自动隐藏窗口",
+                Checked = settings.HideOnFocusLost,
+            };
+            Controls.Add(_hideOnFocusLostCheck);
             y += 44;
 
             _statusLabel = new Label
@@ -310,6 +322,7 @@ namespace MiniTranslation
                 .ToList();
             _settings.AutoTranslateClipboard = _clipboardCheck.Checked;
             _settings.AutoTranslateSelection = _selectionCheck.Checked;
+            _settings.HideOnFocusLost = _hideOnFocusLostCheck.Checked;
             if (HotKeyManager.TryParse(_hotKeyBox.Text, out _, out _))
             {
                 _settings.HotKey = _hotKeyBox.Text;
