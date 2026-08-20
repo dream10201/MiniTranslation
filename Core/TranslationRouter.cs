@@ -1,23 +1,34 @@
 namespace MiniTranslation.Core
 {
     /// <summary>
-    /// 多接口故障切换：按“健康的在前（保持手动顺序）、失败过的在后”依次尝试，
-    /// 失败即降权、成功即恢复。健康状态仅保存在内存中，失败标记在冷却期后自动解除。
+    /// 多接口故障切换：失败的接口从翻译候选中剔除，由后台探活任务
+    /// 定期检测，恢复可用后重新按手动顺序参与调度。
     /// </summary>
     public static class TranslationRouter
     {
-        private static readonly TimeSpan FailureCooldown = TimeSpan.FromMinutes(2);
-        private static readonly Dictionary<string, DateTime> LastFailure = new();
+        private static readonly TimeSpan ProbeInterval = TimeSpan.FromSeconds(60);
+        private static readonly object Gate = new();
+        private static readonly HashSet<string> Failed = new();
+        private static readonly HashSet<string> Probing = new();
+        private static AppSettings? _settings;
 
         public static async Task<TranslationResult> TranslateAsync(string text, AppSettings settings, CancellationToken ct = default)
         {
-            var candidates = settings.Profiles
-                .Where(p => p.IsComplete)
-                .OrderBy(p => IsHealthy(p) ? 0 : 1) // 稳定排序，组内保持手动顺序
-                .ToList();
-            if (candidates.Count == 0)
+            _settings = settings;
+            var complete = settings.Profiles.Where(p => p.IsComplete).ToList();
+            if (complete.Count == 0)
             {
                 throw new InvalidOperationException("没有可用的接口配置。");
+            }
+
+            List<ApiProfile> candidates;
+            lock (Gate)
+            {
+                candidates = complete.Where(p => !Failed.Contains(p.Key)).ToList();
+            }
+            if (candidates.Count == 0)
+            {
+                candidates = complete; // 全部被降权时兜底：仍按手动顺序全试一遍
             }
 
             Exception? lastError = null;
@@ -27,7 +38,7 @@ namespace MiniTranslation.Core
                 try
                 {
                     var result = await TranslationService.TranslateAsync(text, profile, ct).ConfigureAwait(false);
-                    lock (LastFailure) LastFailure.Remove(profile.Key);
+                    MarkHealthy(profile.Key);
                     return result;
                 }
                 catch (OperationCanceledException)
@@ -36,7 +47,7 @@ namespace MiniTranslation.Core
                 }
                 catch (Exception ex)
                 {
-                    lock (LastFailure) LastFailure[profile.Key] = DateTime.UtcNow;
+                    MarkFailed(profile);
                     lastError = ex;
                 }
             }
@@ -46,12 +57,53 @@ namespace MiniTranslation.Core
                 : new InvalidOperationException($"{candidates.Count} 个接口均不可用，最后错误：{lastError!.Message}", lastError);
         }
 
-        private static bool IsHealthy(ApiProfile profile)
+        private static void MarkHealthy(string key)
         {
-            lock (LastFailure)
+            lock (Gate) Failed.Remove(key);
+        }
+
+        private static void MarkFailed(ApiProfile profile)
+        {
+            lock (Gate)
             {
-                return !LastFailure.TryGetValue(profile.Key, out var at) ||
-                       DateTime.UtcNow - at > FailureCooldown;
+                Failed.Add(profile.Key);
+                if (!Probing.Add(profile.Key)) return; // 已有探活任务在跑
+            }
+            _ = ProbeLoopAsync(profile);
+        }
+
+        /// <summary>后台探活：定期发一条极短请求，成功即恢复该接口。</summary>
+        private static async Task ProbeLoopAsync(ApiProfile profile)
+        {
+            try
+            {
+                while (true)
+                {
+                    await Task.Delay(ProbeInterval).ConfigureAwait(false);
+
+                    // 配置已被删除或修改时停止探测
+                    var settings = _settings;
+                    if (settings == null || !settings.Profiles.Any(p => p.Key == profile.Key))
+                    {
+                        MarkHealthy(profile.Key);
+                        return;
+                    }
+
+                    try
+                    {
+                        await TranslationService.TranslateAsync("hi", profile).ConfigureAwait(false);
+                        MarkHealthy(profile.Key);
+                        return;
+                    }
+                    catch
+                    {
+                        // 仍不可用，继续下一轮探测
+                    }
+                }
+            }
+            finally
+            {
+                lock (Gate) Probing.Remove(profile.Key);
             }
         }
     }
