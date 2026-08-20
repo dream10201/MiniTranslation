@@ -29,8 +29,9 @@ namespace MiniTranslation
         private bool _isShown;
         private int _actionBarTop;
 
-        private const int ContentWidth = 400;
+        private const int ContentWidth = 400; // 内容区最小宽度
         private const int Margin_ = 18;
+        private int _contentWidth = ContentWidth;
 
         public MainForm()
         {
@@ -57,12 +58,13 @@ namespace MiniTranslation
                 BackColor = CardBack,
                 ForeColor = TextMain,
                 Multiline = true,
-                WordWrap = false,
+                WordWrap = true,
                 AcceptsReturn = true,
                 MaxLength = 99999999,
                 HideSelection = false,
             };
             _inputBox.KeyDown += InputBox_KeyDown;
+            _inputBox.TextChanged += (_, _) => LayoutContent();
 
             _separator = new Panel
             {
@@ -394,7 +396,7 @@ namespace MiniTranslation
         {
             switch (e.KeyCode)
             {
-                case Keys.Enter:
+                case Keys.Enter when !e.Shift: // Shift+Enter 换行
                     e.Handled = true;
                     e.SuppressKeyPress = true;
                     StartTranslate();
@@ -414,11 +416,14 @@ namespace MiniTranslation
 
         private async void StartTranslate()
         {
-            string text = System.Text.RegularExpressions.Regex
-                .Replace(_inputBox.Text, @"\s+", " ").Trim();
+            // 只合并行内多余空白，保留换行以保住段落结构
+            string text = _inputBox.Text.Replace("\r\n", "\n");
+            text = System.Text.RegularExpressions.Regex.Replace(text, "[ \t]+", " ");
+            text = System.Text.RegularExpressions.Regex.Replace(text, " ?\n ?", "\n");
+            text = System.Text.RegularExpressions.Regex.Replace(text, "\n{3,}", "\n\n").Trim();
             if (text.Length == 0) return;
-            _inputBox.Text = text;
-            _inputBox.SelectionStart = text.Length;
+            _inputBox.Text = text.Replace("\n", "\r\n");
+            _inputBox.SelectionStart = _inputBox.TextLength;
 
             if (!_settings.IsConfigured)
             {
@@ -472,29 +477,73 @@ namespace MiniTranslation
             LayoutContent();
         }
 
-        /// <summary>根据结果行数自适应窗体高度。</summary>
+        /// <summary>
+        /// 根据输入与译文内容双向自适应窗体尺寸：宽度取最宽一行（有上下限），
+        /// 高度按换行后实际所需（有上限），超限时显示滚动条，并保证不超出工作区。
+        /// </summary>
         private void LayoutContent()
         {
-            if (_resultBox.TextLength == 0)
-            {
-                _resultBox.Height = 0;
-            }
-            else
-            {
-                int lines = _resultBox.GetLineFromCharIndex(_resultBox.TextLength) + 1;
-                _resultBox.Height = lines * (_resultBox.Font.Height + 4);
-            }
+            const TextFormatFlags flags = TextFormatFlags.WordBreak | TextFormatFlags.TextBoxControl | TextFormatFlags.NoPrefix;
+            var workArea = Screen.FromControl(this).WorkingArea;
+            int maxContentWidth = Math.Min(760, workArea.Width - 120);
 
-            _actionBarTop = (_resultBox.TextLength == 0 ? _separator.Bottom : _resultBox.Bottom) + 12;
+            int desired = Math.Max(WidestLine(_inputBox.Text, _inputBox.Font),
+                                   WidestLine(_resultBox.Text, _resultBox.Font)) + 10;
+            _contentWidth = Math.Clamp(desired, ContentWidth, maxContentWidth);
+            var wrapArea = new Size(_contentWidth, int.MaxValue);
+
+            int maxInputHeight = _inputBox.Font.Height * 8 + 8;
+            int inputNeeded = TextRenderer.MeasureText(
+                _inputBox.TextLength == 0 ? " " : _inputBox.Text, _inputBox.Font, wrapArea, flags).Height + 8;
+            SetScrollBars(_inputBox, inputNeeded > maxInputHeight);
+            _inputBox.SetBounds(Margin_, Margin_, _contentWidth, Math.Min(inputNeeded, maxInputHeight));
+
+            _separator.SetBounds(Margin_, _inputBox.Bottom + 10, _contentWidth, 1);
+
+            int resultHeight = 0;
+            if (_resultBox.TextLength > 0)
+            {
+                int maxResultHeight = Math.Min(420, workArea.Height / 2);
+                int resultNeeded = TextRenderer.MeasureText(_resultBox.Text, _resultBox.Font, wrapArea, flags).Height + 8;
+                SetScrollBars(_resultBox, resultNeeded > maxResultHeight);
+                resultHeight = Math.Min(resultNeeded, maxResultHeight);
+            }
+            _resultBox.SetBounds(Margin_, _separator.Bottom + 12, _contentWidth, resultHeight);
+
+            _actionBarTop = (resultHeight == 0 ? _separator.Bottom : _resultBox.Bottom) + 12;
             _speakLabel.Location = new Point(Margin_ - 2, _actionBarTop);
             _copyLabel.Location = new Point(_speakLabel.Right + 14, _actionBarTop);
             PositionStatusLabel();
-            ClientSize = new Size(ContentWidth + Margin_ * 2, _speakLabel.Bottom + 14);
+            ClientSize = new Size(_contentWidth + Margin_ * 2, _speakLabel.Bottom + 14);
+
+            if (Visible)
+            {
+                Location = new Point(
+                    Math.Max(workArea.Left, Math.Min(Left, workArea.Right - Width)),
+                    Math.Max(workArea.Top, Math.Min(Top, workArea.Bottom - Height)));
+            }
+        }
+
+        private static int WidestLine(string text, Font font)
+        {
+            int widest = 0;
+            foreach (string line in text.Split('\n'))
+            {
+                widest = Math.Max(widest, TextRenderer.MeasureText(line.TrimEnd('\r'), font).Width);
+            }
+            return widest;
+        }
+
+        /// <summary>只在需要变化时切换滚动条，避免频繁重建控件句柄。</summary>
+        private static void SetScrollBars(TextBox box, bool visible)
+        {
+            var wanted = visible ? ScrollBars.Vertical : ScrollBars.None;
+            if (box.ScrollBars != wanted) box.ScrollBars = wanted;
         }
 
         /// <summary>状态文字右对齐；文字变化后需重新计算位置。</summary>
         private void PositionStatusLabel() =>
-            _statusLabel.Location = new Point(Margin_ + ContentWidth - _statusLabel.PreferredWidth, _actionBarTop);
+            _statusLabel.Location = new Point(Margin_ + _contentWidth - _statusLabel.PreferredWidth, _actionBarTop);
 
         private void SetStatus(string text)
         {
