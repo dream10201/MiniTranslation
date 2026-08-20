@@ -20,7 +20,9 @@ namespace MiniTranslation
         private readonly Panel _resultScrollBar;
         private readonly Label _speakLabel;
         private readonly Label _copyLabel;
+        private readonly Label _pinLabel;
         private readonly Label _statusLabel;
+        private bool _pinned;
         private readonly NotifyIcon _notifyIcon;
 
         private readonly AppSettings _settings = AppSettings.Load();
@@ -103,6 +105,22 @@ namespace MiniTranslation
 
             _speakLabel = CreateActionLabel("\U0001F50A 朗读", (_, _) => Speak());
             _copyLabel = CreateActionLabel("复制", (_, _) => CopyResult());
+            _pinLabel = new Label
+            {
+                AutoSize = true,
+                Font = new Font("Microsoft YaHei UI", 9F),
+                ForeColor = TextMuted,
+                BackColor = CardBack,
+                Text = "\U0001F4CC",
+                Cursor = Cursors.Hand,
+            };
+            _pinLabel.Click += (_, _) =>
+            {
+                _pinned = !_pinned;
+                _pinLabel.ForeColor = _pinned ? TextResult : TextMuted;
+            };
+            _pinLabel.MouseEnter += (_, _) => _pinLabel.ForeColor = TextResult;
+            _pinLabel.MouseLeave += (_, _) => _pinLabel.ForeColor = _pinned ? TextResult : TextMuted;
             _statusLabel = new Label
             {
                 AutoSize = true,
@@ -116,7 +134,7 @@ namespace MiniTranslation
             {
                 _inputBox, _separator, _resultBox,
                 _inputScrollBar, _resultScrollBar,
-                _speakLabel, _copyLabel, _statusLabel,
+                _speakLabel, _copyLabel, _pinLabel, _statusLabel,
             });
 
             var trayMenu = new ContextMenuStrip();
@@ -148,7 +166,7 @@ namespace MiniTranslation
             };
             Deactivate += (_, _) =>
             {
-                if (_settings.HideOnFocusLost && _isShown) SetVisible(false);
+                if (_settings.HideOnFocusLost && !_pinned && _isShown) SetVisible(false);
             };
             FormClosing += (_, e) =>
             {
@@ -560,6 +578,7 @@ namespace MiniTranslation
             _actionBarTop = (resultHeight == 0 ? _separator.Bottom : _resultBox.Bottom) + 12;
             _speakLabel.Location = new Point(Margin_ - 2, _actionBarTop);
             _copyLabel.Location = new Point(_speakLabel.Right + 14, _actionBarTop);
+            _pinLabel.Location = new Point(_copyLabel.Right + 14, _actionBarTop);
             PositionStatusLabel();
             var newSize = new Size(_contentWidth + Margin_ * 2, _speakLabel.Bottom + 14);
             if (ClientSize != newSize)
