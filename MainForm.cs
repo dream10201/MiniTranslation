@@ -309,6 +309,7 @@ namespace MiniTranslation
             else
             {
                 _speech.Stop();
+                _translateCts?.Cancel();
                 Hide();
             }
             _isShown = visible;
