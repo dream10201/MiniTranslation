@@ -6,7 +6,9 @@ namespace MiniTranslation.Core
     /// </summary>
     public static class TranslationRouter
     {
-        private static readonly TimeSpan ProbeInterval = TimeSpan.FromSeconds(60);
+        private static readonly TimeSpan ProbeInitialDelay = TimeSpan.FromSeconds(60);
+        private static readonly TimeSpan ProbeMaxDelay = TimeSpan.FromHours(1);
+        private static readonly TimeSpan ProbeResetAfter = TimeSpan.FromDays(1);
         private static readonly object Gate = new();
         private static readonly HashSet<string> Failed = new();
         private static readonly HashSet<string> Probing = new();
@@ -72,14 +74,20 @@ namespace MiniTranslation.Core
             _ = ProbeLoopAsync(profile);
         }
 
-        /// <summary>后台探活：定期发一条极短请求，成功即恢复该接口。</summary>
+        /// <summary>
+        /// 后台探活：发一条极短请求，成功即恢复该接口。
+        /// 探测间隔指数退避（60s 起每次翻倍，封顶 1 小时），距本轮首次探测
+        /// 超过 1 天后重置回 60s 重新开始。
+        /// </summary>
         private static async Task ProbeLoopAsync(ApiProfile profile)
         {
             try
             {
+                var delay = ProbeInitialDelay;
+                var cycleStart = DateTime.UtcNow;
                 while (true)
                 {
-                    await Task.Delay(ProbeInterval).ConfigureAwait(false);
+                    await Task.Delay(delay).ConfigureAwait(false);
 
                     // 配置已被删除或修改时停止探测
                     var settings = _settings;
@@ -97,7 +105,16 @@ namespace MiniTranslation.Core
                     }
                     catch
                     {
-                        // 仍不可用，继续下一轮探测
+                        // 仍不可用，退避后再试
+                        if (DateTime.UtcNow - cycleStart >= ProbeResetAfter)
+                        {
+                            delay = ProbeInitialDelay;
+                            cycleStart = DateTime.UtcNow;
+                        }
+                        else
+                        {
+                            delay = TimeSpan.FromTicks(Math.Min(delay.Ticks * 2, ProbeMaxDelay.Ticks));
+                        }
                     }
                 }
             }
