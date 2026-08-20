@@ -35,6 +35,7 @@ namespace MiniTranslation
 
         private const int ContentWidth = 400; // 内容区最小宽度
         private const int Margin_ = 18;
+        private const int InputTop = 30; // 顶部留出图钉一行
         private int _contentWidth = ContentWidth;
 
         public MainForm()
@@ -113,6 +114,7 @@ namespace MiniTranslation
                 BackColor = CardBack,
                 Text = "\U0001F4CC",
                 Cursor = Cursors.Hand,
+                Location = new Point(6, 6),
             };
             _pinLabel.Click += (_, _) =>
             {
@@ -558,7 +560,7 @@ namespace MiniTranslation
             _contentWidth = Math.Clamp(desired, ContentWidth, maxContentWidth);
 
             // 先定宽，再用控件自身的实际换行行数算高度，保证所见即所得
-            _inputBox.SetBounds(Margin_, Margin_, _contentWidth, _inputBox.Height);
+            _inputBox.SetBounds(Margin_, InputTop, _contentWidth, _inputBox.Height);
             int maxInputHeight = _inputBox.Font.Height * 8 + 8;
             int inputNeeded = (_inputBox.GetLineFromCharIndex(_inputBox.TextLength) + 1) * _inputBox.Font.Height + 8;
             _inputBox.Height = Math.Min(inputNeeded, maxInputHeight);
@@ -578,7 +580,6 @@ namespace MiniTranslation
             _actionBarTop = (resultHeight == 0 ? _separator.Bottom : _resultBox.Bottom) + 12;
             _speakLabel.Location = new Point(Margin_ - 2, _actionBarTop);
             _copyLabel.Location = new Point(_speakLabel.Right + 14, _actionBarTop);
-            _pinLabel.Location = new Point(_copyLabel.Right + 14, _actionBarTop);
             PositionStatusLabel();
             var newSize = new Size(_contentWidth + Margin_ * 2, _speakLabel.Bottom + 14);
             if (ClientSize != newSize)
