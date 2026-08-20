@@ -332,13 +332,14 @@ namespace MiniTranslation
 
         private bool AnyHotKeyKeyDown()
         {
-            if (((GetAsyncKeyState(0x12) | GetAsyncKeyState(0x11) | GetAsyncKeyState(0x10)) & 0x8000) != 0)
+            if (IsKeyDown(0x12) || IsKeyDown(0x11) || IsKeyDown(0x10)) // Alt/Ctrl/Shift
             {
-                return true; // Alt/Ctrl/Shift
+                return true;
             }
-            return HotKeyManager.TryParse(_settings.HotKey, out _, out var key) &&
-                   (GetAsyncKeyState((int)key) & 0x8000) != 0;
+            return HotKeyManager.TryParse(_settings.HotKey, out _, out var key) && IsKeyDown((int)key);
         }
+
+        private static bool IsKeyDown(int vk) => (GetAsyncKeyState(vk) & 0x8000) != 0;
 
         [DllImport("user32.dll")]
         private static extern short GetAsyncKeyState(int vKey);
