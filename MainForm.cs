@@ -16,6 +16,8 @@ namespace MiniTranslation
         private readonly TextBox _inputBox;
         private readonly TextBox _resultBox;
         private readonly Panel _separator;
+        private readonly Panel _inputScrollBar;
+        private readonly Panel _resultScrollBar;
         private readonly Label _speakLabel;
         private readonly Label _copyLabel;
         private readonly Label _statusLabel;
@@ -89,6 +91,16 @@ namespace MiniTranslation
                 TabStop = false,
             };
 
+            _inputScrollBar = CreateScrollIndicator();
+            _resultScrollBar = CreateScrollIndicator();
+
+            // 无滚动条样式的多行 TextBox 不响应滚轮，手动接管；
+            // 按光标位置分发，悬停在译文上也能滚
+            MouseWheel += (_, e) => HandleWheel(e);
+            _inputBox.MouseWheel += (_, e) => HandleWheel(e);
+            _resultBox.MouseWheel += (_, e) => HandleWheel(e);
+            _inputBox.KeyUp += (_, _) => UpdateScrollIndicators();
+
             _speakLabel = CreateActionLabel("\U0001F50A 朗读", (_, _) => Speak());
             _copyLabel = CreateActionLabel("复制", (_, _) => CopyResult());
             _statusLabel = new Label
@@ -100,7 +112,12 @@ namespace MiniTranslation
                 Text = "",
             };
 
-            Controls.AddRange(new Control[] { _inputBox, _separator, _resultBox, _speakLabel, _copyLabel, _statusLabel });
+            Controls.AddRange(new Control[]
+            {
+                _inputBox, _separator, _resultBox,
+                _inputScrollBar, _resultScrollBar,
+                _speakLabel, _copyLabel, _statusLabel,
+            });
 
             var trayMenu = new ContextMenuStrip();
             trayMenu.Items.Add("显示", null, (_, _) => SetVisible(true));
@@ -545,6 +562,8 @@ namespace MiniTranslation
                     Math.Max(workArea.Left, Math.Min(Left, workArea.Right - Width)),
                     Math.Max(workArea.Top, Math.Min(Top, workArea.Bottom - Height)));
             }
+
+            UpdateScrollIndicators();
         }
 
         private static int WidestLine(string text, Font font)
@@ -556,6 +575,54 @@ namespace MiniTranslation
             }
             return widest;
         }
+
+        #region 滚轮滚动与滚动指示条
+
+        private const int EmLineScroll = 0x00B6;
+        private const int EmGetFirstVisibleLine = 0x00CE;
+
+        private static Panel CreateScrollIndicator() => new()
+        {
+            BackColor = Color.FromArgb(203, 206, 212),
+            Size = new Size(3, 0),
+            Visible = false,
+            Enabled = false,
+        };
+
+        private void HandleWheel(MouseEventArgs e)
+        {
+            var pt = PointToClient(Cursor.Position);
+            var target = _resultBox.Bounds.Contains(pt) && _resultBox.Height > 0 ? _resultBox : _inputBox;
+            SendMessage(target.Handle, EmLineScroll, 0, -(e.Delta / 120) * 3);
+            UpdateScrollIndicators();
+            if (e is HandledMouseEventArgs handled) handled.Handled = true;
+        }
+
+        private void UpdateScrollIndicators()
+        {
+            UpdateScrollIndicator(_inputBox, _inputScrollBar);
+            UpdateScrollIndicator(_resultBox, _resultScrollBar);
+        }
+
+        /// <summary>内容超高时在右侧显示 3px 指示条，长度与位置对应可视比例。</summary>
+        private void UpdateScrollIndicator(TextBox box, Panel bar)
+        {
+            int totalLines = box.GetLineFromCharIndex(box.TextLength) + 1;
+            int visibleLines = Math.Max(1, box.Height / box.Font.Height);
+            if (box.Height == 0 || box.TextLength == 0 || totalLines <= visibleLines)
+            {
+                bar.Visible = false;
+                return;
+            }
+            int firstLine = (int)SendMessage(box.Handle, EmGetFirstVisibleLine, 0, 0);
+            int maxFirst = Math.Max(1, totalLines - visibleLines);
+            int barHeight = Math.Max(24, box.Height * visibleLines / totalLines);
+            int barTop = box.Top + (box.Height - barHeight) * Math.Min(firstLine, maxFirst) / maxFirst;
+            bar.SetBounds(box.Right + 6, barTop, 3, barHeight);
+            bar.Visible = true;
+        }
+
+        #endregion
 
         /// <summary>状态文字右对齐；文字变化后需重新计算位置。</summary>
         private void PositionStatusLabel() =>
