@@ -283,11 +283,25 @@ namespace MiniTranslation
             bool captured = false;
             try
             {
-                string before = GetClipboardText();
+                // 等热键的物理按键（Alt/Q 等）真正松开，否则注入的 Ctrl+C
+                // 会被残留的修饰键污染成 Ctrl+Alt+C 而被目标程序忽略
+                for (int i = 0; i < 10 && AnyHotKeyKeyDown(); i++)
+                {
+                    await Task.Delay(30);
+                }
+
+                // 剪贴板序号只要发生过复制就会变化，与内容是否相同无关
+                uint seqBefore = GetClipboardSequenceNumber();
                 SendCopyShortcut();
-                await Task.Delay(150);
-                string after = GetClipboardText();
-                captured = after.Length > 0 && after != before;
+                for (int i = 0; i < 12; i++)
+                {
+                    await Task.Delay(50);
+                    if (GetClipboardSequenceNumber() != seqBefore)
+                    {
+                        captured = true;
+                        break;
+                    }
+                }
             }
             catch
             {
@@ -296,18 +310,69 @@ namespace MiniTranslation
             if (captured) TryTranslateClipboard(force: true);
         }
 
+        private static bool AnyHotKeyKeyDown() =>
+            (GetAsyncKeyState(0x12) & 0x8000) != 0 || // Alt
+            (GetAsyncKeyState(0x11) & 0x8000) != 0 || // Ctrl
+            (GetAsyncKeyState(0x10) & 0x8000) != 0 || // Shift
+            (GetAsyncKeyState(0x51) & 0x8000) != 0;   // Q
+
         [DllImport("user32.dll")]
-        private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+        private static extern short GetAsyncKeyState(int vKey);
+
+        [DllImport("user32.dll")]
+        private static extern uint GetClipboardSequenceNumber();
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern uint SendInput(uint nInputs, Input[] pInputs, int cbSize);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct Input
+        {
+            public uint Type;
+            public InputUnion U;
+        }
+
+        [StructLayout(LayoutKind.Explicit)]
+        private struct InputUnion
+        {
+            [FieldOffset(0)] public MouseInput Mouse;
+            [FieldOffset(0)] public KeyboardInput Keyboard;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MouseInput
+        {
+            public int Dx, Dy;
+            public uint MouseData, Flags, Time;
+            public IntPtr ExtraInfo;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct KeyboardInput
+        {
+            public ushort Vk, Scan;
+            public uint Flags, Time;
+            public IntPtr ExtraInfo;
+        }
+
+        private static Input Key(ushort vk, bool up) => new()
+        {
+            Type = 1, // INPUT_KEYBOARD
+            U = new InputUnion { Keyboard = new KeyboardInput { Vk = vk, Flags = up ? 0x2u : 0u } },
+        };
 
         private static void SendCopyShortcut()
         {
-            const uint KeyUp = 0x2;
-            // 热键 Alt+Q 的 Alt 此时可能仍被按住，先补发抬起，避免变成 Ctrl+Alt+C
-            keybd_event(0x12, 0, KeyUp, UIntPtr.Zero); // Alt
-            keybd_event(0x11, 0, 0, UIntPtr.Zero);     // Ctrl 按下
-            keybd_event(0x43, 0, 0, UIntPtr.Zero);     // C 按下
-            keybd_event(0x43, 0, KeyUp, UIntPtr.Zero);
-            keybd_event(0x11, 0, KeyUp, UIntPtr.Zero);
+            // 保险起见先抬起 Alt，再整组注入 Ctrl+C
+            var inputs = new[]
+            {
+                Key(0x12, up: true),  // Alt up
+                Key(0x11, up: false), // Ctrl down
+                Key(0x43, up: false), // C down
+                Key(0x43, up: true),
+                Key(0x11, up: true),
+            };
+            SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<Input>());
         }
 
         private void InputBox_KeyDown(object? sender, KeyEventArgs e)
