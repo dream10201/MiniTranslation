@@ -176,8 +176,7 @@ namespace MiniTranslation
             get
             {
                 var cp = base.CreateParams;
-                cp.ClassStyle |= 0x20000;    // CS_DROPSHADOW
-                cp.ExStyle |= 0x02000000;    // WS_EX_COMPOSITED：整窗合成绘制，消除子控件闪烁
+                cp.ClassStyle |= 0x20000; // CS_DROPSHADOW
                 return cp;
             }
         }
@@ -481,7 +480,8 @@ namespace MiniTranslation
         private void ShowResult(string text, bool isError)
         {
             _resultBox.ForeColor = isError ? TextError : TextResult;
-            _resultBox.Text = text;
+            // edit 控件对裸 \n 的显示与行数计算不可靠，统一为 \r\n
+            _resultBox.Text = text.Replace("\r\n", "\n").Replace("\n", "\r\n");
             LayoutContent();
         }
 
@@ -491,28 +491,28 @@ namespace MiniTranslation
         /// </summary>
         private void LayoutContent()
         {
-            const TextFormatFlags flags = TextFormatFlags.WordBreak | TextFormatFlags.TextBoxControl | TextFormatFlags.NoPrefix;
             var workArea = Screen.FromControl(this).WorkingArea;
             int maxContentWidth = Math.Min(760, workArea.Width - 120);
 
             int desired = Math.Max(WidestLine(_inputBox.Text, _inputBox.Font),
                                    WidestLine(_resultBox.Text, _resultBox.Font)) + 10;
             _contentWidth = Math.Clamp(desired, ContentWidth, maxContentWidth);
-            var wrapArea = new Size(_contentWidth, int.MaxValue);
 
+            // 先定宽，再用控件自身的实际换行行数算高度，保证所见即所得
+            _inputBox.SetBounds(Margin_, Margin_, _contentWidth, _inputBox.Height);
             int maxInputHeight = _inputBox.Font.Height * 8 + 8;
-            int inputNeeded = TextRenderer.MeasureText(
-                _inputBox.TextLength == 0 ? " " : _inputBox.Text, _inputBox.Font, wrapArea, flags).Height + 8;
+            int inputNeeded = (_inputBox.GetLineFromCharIndex(_inputBox.TextLength) + 1) * _inputBox.Font.Height + 8;
             SetScrollBars(_inputBox, inputNeeded > maxInputHeight);
-            _inputBox.SetBounds(Margin_, Margin_, _contentWidth, Math.Min(inputNeeded, maxInputHeight));
+            _inputBox.Height = Math.Min(inputNeeded, maxInputHeight);
 
             _separator.SetBounds(Margin_, _inputBox.Bottom + 10, _contentWidth, 1);
 
             int resultHeight = 0;
             if (_resultBox.TextLength > 0)
             {
+                _resultBox.SetBounds(Margin_, _separator.Bottom + 12, _contentWidth, _resultBox.Height);
                 int maxResultHeight = Math.Min(420, workArea.Height / 2);
-                int resultNeeded = TextRenderer.MeasureText(_resultBox.Text, _resultBox.Font, wrapArea, flags).Height + 8;
+                int resultNeeded = (_resultBox.GetLineFromCharIndex(_resultBox.TextLength) + 1) * _resultBox.Font.Height + 8;
                 SetScrollBars(_resultBox, resultNeeded > maxResultHeight);
                 resultHeight = Math.Min(resultNeeded, maxResultHeight);
             }
