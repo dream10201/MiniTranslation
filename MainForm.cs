@@ -158,7 +158,11 @@ namespace MiniTranslation
                     SetVisible(false);
                 }
             };
-            Shown += (_, _) => Hide();
+            Shown += (_, _) =>
+            {
+                Hide();
+                if (_settings.AutoCheckUpdate) _ = NotifyIfUpdateAvailableAsync();
+            };
             MouseDown += Form_MouseDown;
 
             LayoutContent();
@@ -493,6 +497,10 @@ namespace MiniTranslation
                 if (cts.IsCancellationRequested) return;
                 ShowResult(result.Text, isError: false);
                 _speakText = result.SourceIsChinese ? result.Text : text;
+                if (_settings.AutoCopyResult && result.Text.Length > 0)
+                {
+                    CopyResult();
+                }
             }
             catch (OperationCanceledException)
             {
@@ -654,6 +662,20 @@ namespace MiniTranslation
                 _lastClipboardText = _resultBox.Text.Trim(); // 复制的译文不触发自动翻译
                 SetStatus("已复制");
             }
+        }
+
+        private async Task NotifyIfUpdateAvailableAsync()
+        {
+            await Task.Delay(TimeSpan.FromSeconds(10)); // 避开启动高峰
+            string? newVersion = await UpdateChecker.CheckAsync();
+            if (newVersion == null) return;
+            _notifyIcon.BalloonTipClicked += (_, _) =>
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(UpdateChecker.ReleasesUrl)
+                {
+                    UseShellExecute = true,
+                });
+            _notifyIcon.ShowBalloonTip(5000, "MiniTranslation",
+                $"发现新版本 {newVersion}，点击前往下载。", ToolTipIcon.Info);
         }
 
         private void OpenSettings()

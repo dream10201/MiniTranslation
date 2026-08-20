@@ -20,6 +20,9 @@ namespace MiniTranslation
         private readonly CheckBox _clipboardCheck;
         private readonly CheckBox _selectionCheck;
         private readonly CheckBox _hideOnFocusLostCheck;
+        private readonly CheckBox _autoCopyCheck;
+        private readonly CheckBox _autoStartCheck;
+        private readonly CheckBox _autoUpdateCheck;
         private readonly Button _testButton;
         private readonly Button _saveButton;
         private readonly Label _statusLabel;
@@ -38,7 +41,7 @@ namespace MiniTranslation
             MinimizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
             BackColor = Color.White;
-            ClientSize = new Size(500, 556);
+            ClientSize = new Size(500, 664);
 
             const int labelX = 24, inputX = 110, inputW = 366, buttonW = 92;
 
@@ -122,6 +125,39 @@ namespace MiniTranslation
                 Checked = settings.HideOnFocusLost,
             };
             Controls.Add(_hideOnFocusLostCheck);
+            y += 36;
+
+            _autoCopyCheck = new CheckBox
+            {
+                AutoSize = true,
+                Location = new Point(inputX, y),
+                ForeColor = TextMain,
+                Text = "翻译完成后自动复制译文",
+                Checked = settings.AutoCopyResult,
+            };
+            Controls.Add(_autoCopyCheck);
+            y += 36;
+
+            _autoStartCheck = new CheckBox
+            {
+                AutoSize = true,
+                Location = new Point(inputX, y),
+                ForeColor = TextMain,
+                Text = "开机自启动",
+                Checked = AutoStart.IsEnabled(),
+            };
+            Controls.Add(_autoStartCheck);
+            y += 36;
+
+            _autoUpdateCheck = new CheckBox
+            {
+                AutoSize = true,
+                Location = new Point(inputX, y),
+                ForeColor = TextMain,
+                Text = "自动检查更新",
+                Checked = settings.AutoCheckUpdate,
+            };
+            Controls.Add(_autoUpdateCheck);
             y += 44;
 
             _statusLabel = new Label
@@ -323,6 +359,9 @@ namespace MiniTranslation
             _settings.AutoTranslateClipboard = _clipboardCheck.Checked;
             _settings.AutoTranslateSelection = _selectionCheck.Checked;
             _settings.HideOnFocusLost = _hideOnFocusLostCheck.Checked;
+            _settings.AutoCopyResult = _autoCopyCheck.Checked;
+            _settings.AutoCheckUpdate = _autoUpdateCheck.Checked;
+            AutoStart.SetEnabled(_autoStartCheck.Checked);
             if (HotKeyManager.TryParse(_hotKeyBox.Text, out _, out _))
             {
                 _settings.HotKey = _hotKeyBox.Text;
