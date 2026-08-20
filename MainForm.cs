@@ -55,7 +55,8 @@ namespace MiniTranslation
             {
                 Location = new Point(Margin_, Margin_),
                 Size = new Size(ContentWidth, 28),
-                Font = new Font("Microsoft YaHei UI", 11.5F),
+                // 拉丁字形用 Segoe UI，中文经系统 font linking 回落到雅黑
+                Font = new Font("Segoe UI", 11F),
                 BorderStyle = BorderStyle.None,
                 BackColor = CardBack,
                 ForeColor = TextMain,
@@ -79,7 +80,7 @@ namespace MiniTranslation
             {
                 Location = new Point(Margin_, _separator.Bottom + 12),
                 Size = new Size(ContentWidth, 0),
-                Font = new Font("Microsoft YaHei UI", 11.5F),
+                Font = new Font("Segoe UI", 11F),
                 BorderStyle = BorderStyle.None,
                 BackColor = CardBack,
                 ForeColor = TextResult,
@@ -513,7 +514,6 @@ namespace MiniTranslation
             _inputBox.SetBounds(Margin_, Margin_, _contentWidth, _inputBox.Height);
             int maxInputHeight = _inputBox.Font.Height * 8 + 8;
             int inputNeeded = (_inputBox.GetLineFromCharIndex(_inputBox.TextLength) + 1) * _inputBox.Font.Height + 8;
-            SetScrollBars(_inputBox, inputNeeded > maxInputHeight);
             _inputBox.Height = Math.Min(inputNeeded, maxInputHeight);
 
             _separator.SetBounds(Margin_, _inputBox.Bottom + 10, _contentWidth, 1);
@@ -524,7 +524,6 @@ namespace MiniTranslation
                 _resultBox.SetBounds(Margin_, _separator.Bottom + 12, _contentWidth, _resultBox.Height);
                 int maxResultHeight = Math.Min(420, workArea.Height / 2);
                 int resultNeeded = (_resultBox.GetLineFromCharIndex(_resultBox.TextLength) + 1) * _resultBox.Font.Height + 8;
-                SetScrollBars(_resultBox, resultNeeded > maxResultHeight);
                 resultHeight = Math.Min(resultNeeded, maxResultHeight);
             }
             _resultBox.SetBounds(Margin_, _separator.Bottom + 12, _contentWidth, resultHeight);
@@ -556,13 +555,6 @@ namespace MiniTranslation
                 widest = Math.Max(widest, TextRenderer.MeasureText(line.TrimEnd('\r'), font).Width);
             }
             return widest;
-        }
-
-        /// <summary>只在需要变化时切换滚动条，避免频繁重建控件句柄。</summary>
-        private static void SetScrollBars(TextBox box, bool visible)
-        {
-            var wanted = visible ? ScrollBars.Vertical : ScrollBars.None;
-            if (box.ScrollBars != wanted) box.ScrollBars = wanted;
         }
 
         /// <summary>状态文字右对齐；文字变化后需重新计算位置。</summary>
