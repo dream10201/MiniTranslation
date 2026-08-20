@@ -299,9 +299,8 @@ namespace MiniTranslation
             bool sent = false;
             try
             {
-                // 等热键的物理按键（Alt/Q 等）真正松开，否则注入的 Ctrl+C
-                // 会被残留的修饰键污染成 Ctrl+Alt+C 而被目标程序忽略；
-                // 注入必须在本窗口显示（抢走焦点）之前完成
+                // 稍等热键的物理按键松开；等不到也没关系，注入时会
+                // 强制抬起残留的修饰键。注入必须在本窗口抢焦点之前完成
                 for (int i = 0; i < 10 && AnyHotKeyKeyDown(); i++)
                 {
                     await Task.Delay(30);
@@ -309,6 +308,7 @@ namespace MiniTranslation
                 seqBefore = GetClipboardSequenceNumber();
                 SendCopyShortcut();
                 sent = true;
+                await Task.Delay(60); // 让目标窗口先处理注入的按键，再抢焦点
             }
             catch
             {
@@ -317,23 +317,28 @@ namespace MiniTranslation
             SetVisible(true);
             if (!sent) return;
 
-            // 剪贴板序号只要发生过复制就会变化，与内容是否相同无关
-            for (int i = 0; i < 12; i++)
+            // 剪贴板序号只要发生过复制就会变化，与内容是否相同无关；
+            // 放宽到 1.5s 兼容写剪贴板慢的程序
+            for (int i = 0; i < 30; i++)
             {
-                await Task.Delay(50);
                 if (GetClipboardSequenceNumber() != seqBefore)
                 {
                     TryTranslateClipboard(force: true);
                     return;
                 }
+                await Task.Delay(50);
             }
         }
 
-        private static bool AnyHotKeyKeyDown() =>
-            (GetAsyncKeyState(0x12) & 0x8000) != 0 || // Alt
-            (GetAsyncKeyState(0x11) & 0x8000) != 0 || // Ctrl
-            (GetAsyncKeyState(0x10) & 0x8000) != 0 || // Shift
-            (GetAsyncKeyState(0x51) & 0x8000) != 0;   // Q
+        private bool AnyHotKeyKeyDown()
+        {
+            if (((GetAsyncKeyState(0x12) | GetAsyncKeyState(0x11) | GetAsyncKeyState(0x10)) & 0x8000) != 0)
+            {
+                return true; // Alt/Ctrl/Shift
+            }
+            return HotKeyManager.TryParse(_settings.HotKey, out _, out var key) &&
+                   (GetAsyncKeyState((int)key) & 0x8000) != 0;
+        }
 
         [DllImport("user32.dll")]
         private static extern short GetAsyncKeyState(int vKey);
@@ -382,16 +387,21 @@ namespace MiniTranslation
 
         private static void SendCopyShortcut()
         {
-            // 保险起见先抬起 Alt，再整组注入 Ctrl+C
-            var inputs = new[]
+            var inputs = new List<Input>();
+            // 把仍被物理按住的修饰键强制抬起，与 Ctrl+C 同批原子注入，
+            // 避免目标程序收到 Ctrl+Shift+C / Ctrl+Alt+C 之类被污染的组合键
+            foreach (ushort vk in new ushort[] { 0x12, 0x10, 0x5B, 0x5C, 0x11 }) // Alt/Shift/LWin/RWin/Ctrl
             {
-                Key(0x12, up: true),  // Alt up
-                Key(0x11, up: false), // Ctrl down
-                Key(0x43, up: false), // C down
-                Key(0x43, up: true),
-                Key(0x11, up: true),
-            };
-            SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<Input>());
+                if ((GetAsyncKeyState(vk) & 0x8000) != 0)
+                {
+                    inputs.Add(Key(vk, up: true));
+                }
+            }
+            inputs.Add(Key(0x11, up: false)); // Ctrl down
+            inputs.Add(Key(0x43, up: false)); // C down
+            inputs.Add(Key(0x43, up: true));
+            inputs.Add(Key(0x11, up: true));
+            SendInput((uint)inputs.Count, inputs.ToArray(), Marshal.SizeOf<Input>());
         }
 
         private void InputBox_KeyDown(object? sender, KeyEventArgs e)
