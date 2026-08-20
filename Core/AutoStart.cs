@@ -8,10 +8,15 @@ namespace MiniTranslation.Core
         private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
         private const string ValueName = "MiniTranslation";
 
+        // 旧版安装包用启动文件夹快捷方式实现自启动，需一并识别与清理
+        private static string StartupShortcut =>
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup), "MiniTranslation.lnk");
+
         public static bool IsEnabled()
         {
             try
             {
+                if (File.Exists(StartupShortcut)) return true;
                 using var key = Registry.CurrentUser.OpenSubKey(RunKey);
                 return key?.GetValue(ValueName) is string path &&
                        string.Equals(path.Trim('"'), Application.ExecutablePath, StringComparison.OrdinalIgnoreCase);
@@ -35,10 +40,12 @@ namespace MiniTranslation.Core
                 {
                     key.DeleteValue(ValueName, throwOnMissingValue: false);
                 }
+                // 统一到注册表方案，无论开关都清掉旧快捷方式，避免双重自启
+                if (File.Exists(StartupShortcut)) File.Delete(StartupShortcut);
             }
             catch
             {
-                // 注册表不可写时忽略
+                // 注册表/文件不可写时忽略
             }
         }
     }

@@ -33,7 +33,10 @@ Source: "publish\MiniTranslation.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\MiniTranslation"; Filename: "{app}\MiniTranslation.exe"
-Name: "{userstartup}\MiniTranslation"; Filename: "{app}\MiniTranslation.exe"; Tasks: startup
+
+[Registry]
+; 与应用内“开机自启动”开关使用同一个 Run 注册表键
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "MiniTranslation"; ValueData: """{app}\MiniTranslation.exe"""; Tasks: startup; Flags: uninsdeletevalue
 
 [Run]
 ; 不加 skipifsilent：静默自动更新完成后也会重新拉起应用
