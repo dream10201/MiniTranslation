@@ -23,12 +23,21 @@
 
 ![image](view.gif)
 
+## 下载
+
+从 [Releases](../../releases) 下载：
+
+- `MiniTranslation-Setup.exe`：安装包（按当前用户安装，可勾选开机自启）
+- `MiniTranslation-win-x64.zip`：绿色版，解压即用
+
+两者均自包含 .NET 运行时，无需额外安装。
+
 ## 构建
 
 需要 .NET 10 SDK：
 
 ```bash
-dotnet publish -c Release -r win-x64 --self-contained -p:PublishSingleFile=true
+dotnet publish -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true
 ```
 
-推送 `v*` 格式的 tag（如 `v2.0.0`）会自动构建并发布 GitHub Release。
+推送 `v*` 格式的 tag（如 `v2.0.0`）会自动构建 zip 与安装包并发布 GitHub Release。

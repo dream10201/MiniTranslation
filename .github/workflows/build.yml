@@ -36,21 +36,30 @@ jobs:
           --self-contained
           -p:PublishSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true
           -p:Version=${{ steps.version.outputs.version }}
           -o publish
 
-      - name: Package
+      - name: Package zip
         shell: pwsh
         run: Compress-Archive -Path publish/MiniTranslation.exe -DestinationPath MiniTranslation-win-x64.zip
+
+      - name: Package installer
+        shell: pwsh
+        run: iscc /DMyAppVersion=${{ steps.version.outputs.version }} setup.iss
 
       - uses: actions/upload-artifact@v7
         with:
           name: MiniTranslation-win-x64
-          path: MiniTranslation-win-x64.zip
+          path: |
+            MiniTranslation-win-x64.zip
+            MiniTranslation-Setup.exe
 
       - name: Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v3
         with:
-          files: MiniTranslation-win-x64.zip
+          files: |
+            MiniTranslation-win-x64.zip
+            MiniTranslation-Setup.exe
           generate_release_notes: true
