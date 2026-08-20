@@ -181,7 +181,7 @@ namespace MiniTranslation
             Shown += (_, _) =>
             {
                 Hide();
-                if (_settings.AutoCheckUpdate) _ = NotifyIfUpdateAvailableAsync();
+                _ = UpdateLoopAsync();
             };
             MouseDown += Form_MouseDown;
 
@@ -684,31 +684,54 @@ namespace MiniTranslation
             }
         }
 
-        private async Task NotifyIfUpdateAvailableAsync()
+        /// <summary>启动后检查一次更新，之后每小时一次；有新版本静默下载，下次启动安装。</summary>
+        private async Task UpdateLoopAsync()
         {
+            if (!UpdateManager.Enabled) return;
+            string? notifiedVersion = null;
             await Task.Delay(TimeSpan.FromSeconds(10)); // 避开启动高峰
-            var update = await UpdateChecker.CheckAsync();
-            if (update == null) return;
-
-            bool updating = false;
-            _notifyIcon.BalloonTipClicked += async (_, _) =>
+            while (true)
             {
-                if (updating) return;
-                updating = true;
-                _notifyIcon.ShowBalloonTip(3000, "MiniTranslation", "正在下载更新，完成后将自动重启。", ToolTipIcon.Info);
+                if (_settings.AutoCheckUpdate)
+                {
+                    try
+                    {
+                        var pending = await UpdateManager.CheckAndDownloadAsync();
+                        if (pending != null && pending.Version != notifiedVersion)
+                        {
+                            notifiedVersion = pending.Version;
+                            ShowUpdateBalloon(pending);
+                        }
+                    }
+                    catch
+                    {
+                        // 网络异常时下一轮再试
+                    }
+                }
+                await Task.Delay(TimeSpan.FromHours(1));
+            }
+        }
+
+        private void ShowUpdateBalloon(PendingUpdate pending)
+        {
+            bool applied = false;
+            _notifyIcon.BalloonTipClicked += (_, _) =>
+            {
+                if (applied) return;
+                applied = true;
                 try
                 {
-                    await Updater.DownloadAndApplyAsync(update);
+                    UpdateManager.Apply(pending);
                     ExitApp();
                 }
                 catch (Exception ex)
                 {
-                    updating = false;
+                    applied = false;
                     _notifyIcon.ShowBalloonTip(3000, "MiniTranslation", "更新失败：" + ex.Message, ToolTipIcon.Error);
                 }
             };
             _notifyIcon.ShowBalloonTip(5000, "MiniTranslation",
-                $"发现新版本 {update.Version}，点击自动更新。", ToolTipIcon.Info);
+                $"新版本 {pending.Version} 已下载，将在下次启动时安装，点击立即重启更新。", ToolTipIcon.Info);
         }
 
         private void OpenSettings()

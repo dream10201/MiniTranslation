@@ -1,3 +1,4 @@
+using System.Drawing.Drawing2D;
 using MiniTranslation.Core;
 
 namespace MiniTranslation
@@ -8,9 +9,11 @@ namespace MiniTranslation
         private static readonly Color TextMain = Color.FromArgb(32, 33, 36);
         private static readonly Color TextMuted = Color.FromArgb(128, 132, 139);
         private static readonly Color Accent = Color.FromArgb(25, 103, 210);
+        private static readonly Color LineColor = Color.FromArgb(225, 228, 232);
 
         private readonly AppSettings _settings;
         private readonly List<ApiProfile> _profiles;
+        private readonly List<int> _separatorYs = new();
 
         private readonly ListBox _profileList;
         private readonly TextBox _urlBox;
@@ -28,7 +31,9 @@ namespace MiniTranslation
         private readonly Button _updateButton;
         private readonly Label _statusLabel;
         private bool _loadingFields;
-        private UpdateInfo? _update;
+        private PendingUpdate? _pending;
+
+        private const int LabelX = 24, InputX = 110, InputW = 366, RowW = 452;
 
         public SettingsForm(AppSettings settings)
         {
@@ -43,152 +48,115 @@ namespace MiniTranslation
             MinimizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
             BackColor = Color.White;
-            ClientSize = new Size(500, 710);
 
-            const int labelX = 24, inputX = 110, inputW = 366, buttonW = 92;
+            int y = 20;
 
-            var listLabel = new Label
-            {
-                AutoSize = true,
-                Location = new Point(labelX, 20),
-                ForeColor = TextMuted,
-                Text = "接口列表",
-            };
-            Controls.Add(listLabel);
+            // ---- 接口 ----
+            AddMutedLabel("接口列表", LabelX, y);
+            y += 28;
 
             _profileList = new ListBox
             {
-                Location = new Point(labelX, 48),
-                Size = new Size(452 - buttonW - 10, 118),
+                Location = new Point(LabelX, y),
+                Size = new Size(RowW - 102, 118),
                 Font = new Font("Microsoft YaHei UI", 9.5F),
                 IntegralHeight = false,
             };
             _profileList.SelectedIndexChanged += (_, _) => LoadSelectedProfile();
             Controls.Add(_profileList);
 
-            int buttonX = labelX + _profileList.Width + 10;
-            Controls.Add(CreateSmallButton("添加", new Point(buttonX, 48), AddProfile));
-            Controls.Add(CreateSmallButton("删除", new Point(buttonX, 80), RemoveProfile));
-            Controls.Add(CreateSmallButton("上移", new Point(buttonX, 112), (_, _) => MoveProfile(-1)));
-            Controls.Add(CreateSmallButton("下移", new Point(buttonX, 144), (_, _) => MoveProfile(1)));
+            int buttonX = LabelX + _profileList.Width + 10;
+            Controls.Add(CreateSmallButton("添加", new Point(buttonX, y), AddProfile));
+            Controls.Add(CreateSmallButton("删除", new Point(buttonX, y + 32), RemoveProfile));
+            Controls.Add(CreateSmallButton("上移", new Point(buttonX, y + 64), (_, _) => MoveProfile(-1)));
+            Controls.Add(CreateSmallButton("下移", new Point(buttonX, y + 96), (_, _) => MoveProfile(1)));
+            y += 136;
 
-            int y = 184;
-            AddLabel("API 地址", labelX, y + 4);
-            _urlBox = AddTextBox(inputX, y, inputW);
+            AddLabel("API 地址", LabelX, y + 4);
+            _urlBox = AddTextBox(InputX, y, InputW);
             _urlBox.PlaceholderText = "https://api.deepseek.com";
             y += 42;
 
-            AddLabel("API Key", labelX, y + 4);
-            _keyBox = AddTextBox(inputX, y, inputW);
+            AddLabel("API Key", LabelX, y + 4);
+            _keyBox = AddTextBox(InputX, y, InputW);
             _keyBox.UseSystemPasswordChar = true;
             y += 42;
 
-            AddLabel("模型", labelX, y + 4);
-            _modelBox = AddTextBox(inputX, y, inputW);
+            AddLabel("模型", LabelX, y + 4);
+            _modelBox = AddTextBox(InputX, y, InputW - 100);
             _modelBox.PlaceholderText = "deepseek-chat";
-            y += 42;
+            _testButton = CreateButton("测试", new Point(InputX + InputW - 86, y - 2), false);
+            _testButton.Click += async (_, _) => await TestAsync();
+            Controls.Add(_testButton);
+            y += 40;
 
-            AddLabel("快捷键", labelX, y + 4);
-            _hotKeyBox = AddTextBox(inputX, y, 160);
+            y = AddSeparator(y);
+
+            // ---- 选项 ----
+            AddLabel("快捷键", LabelX, y + 4);
+            _hotKeyBox = AddTextBox(InputX, y, 160);
             _hotKeyBox.Text = settings.HotKey;
             _hotKeyBox.ReadOnly = true;
             _hotKeyBox.BackColor = Color.White;
             _hotKeyBox.KeyDown += HotKeyBox_KeyDown;
-            y += 46;
+            y += 44;
 
-            _clipboardCheck = new CheckBox
-            {
-                AutoSize = true,
-                Location = new Point(labelX, y),
-                ForeColor = TextMain,
-                Text = "显示窗口时自动翻译剪贴板内容",
-                Checked = settings.AutoTranslateClipboard,
-            };
-            Controls.Add(_clipboardCheck);
-            y += 34;
+            _clipboardCheck = AddCheckBox("显示窗口时自动翻译剪贴板内容", ref y, settings.AutoTranslateClipboard);
+            _selectionCheck = AddCheckBox("显示窗口时自动翻译选中的文本", ref y, settings.AutoTranslateSelection);
+            _hideOnFocusLostCheck = AddCheckBox("失去焦点时自动隐藏窗口", ref y, settings.HideOnFocusLost);
+            _autoCopyCheck = AddCheckBox("翻译完成后自动复制译文", ref y, settings.AutoCopyResult);
+            _autoStartCheck = AddCheckBox("开机自启动", ref y, AutoStart.IsEnabled());
+            _autoUpdateCheck = AddCheckBox("自动更新", ref y, settings.AutoCheckUpdate);
+            y += 6;
 
-            _selectionCheck = new CheckBox
-            {
-                AutoSize = true,
-                Location = new Point(labelX, y),
-                ForeColor = TextMain,
-                Text = "显示窗口时自动翻译选中的文本",
-                Checked = settings.AutoTranslateSelection,
-            };
-            Controls.Add(_selectionCheck);
-            y += 36;
+            y = AddSeparator(y);
 
-            _hideOnFocusLostCheck = new CheckBox
-            {
-                AutoSize = true,
-                Location = new Point(inputX, y),
-                ForeColor = TextMain,
-                Text = "失去焦点时自动隐藏窗口",
-                Checked = settings.HideOnFocusLost,
-            };
-            Controls.Add(_hideOnFocusLostCheck);
-            y += 36;
-
-            _autoCopyCheck = new CheckBox
-            {
-                AutoSize = true,
-                Location = new Point(inputX, y),
-                ForeColor = TextMain,
-                Text = "翻译完成后自动复制译文",
-                Checked = settings.AutoCopyResult,
-            };
-            Controls.Add(_autoCopyCheck);
-            y += 36;
-
-            _autoStartCheck = new CheckBox
-            {
-                AutoSize = true,
-                Location = new Point(inputX, y),
-                ForeColor = TextMain,
-                Text = "开机自启动",
-                Checked = AutoStart.IsEnabled(),
-            };
-            Controls.Add(_autoStartCheck);
-            y += 36;
-
-            _autoUpdateCheck = new CheckBox
-            {
-                AutoSize = true,
-                Location = new Point(inputX, y),
-                ForeColor = TextMain,
-                Text = "自动检查更新",
-                Checked = settings.AutoCheckUpdate,
-            };
-            Controls.Add(_autoUpdateCheck);
-            y += 40;
-
-            AddLabel($"版本 {Application.ProductVersion.Split('+', '-')[0]}", labelX, y + 6);
-            _updateButton = CreateButton("检查更新", new Point(inputX, y), false);
+            // ---- 版本 ----
+            AddMutedLabel($"版本 {Application.ProductVersion.Split('+', '-')[0]}", LabelX, y + 6);
+            _updateButton = CreateButton("检查更新", new Point(InputX, y), false);
             _updateButton.Click += async (_, _) => await CheckUpdateAsync();
             Controls.Add(_updateButton);
-            y += 46;
+            _pending = UpdateManager.GetPending();
+            if (_pending != null) _updateButton.Text = "重启并更新";
+            y += 52;
 
+            // ---- 底部 ----
             _statusLabel = new Label
             {
                 AutoSize = true,
-                Location = new Point(labelX, y + 8),
+                Location = new Point(LabelX, y + 8),
                 Font = new Font("Microsoft YaHei UI", 9F),
                 ForeColor = TextMuted,
                 Text = "",
             };
-
-            _testButton = CreateButton("测试", new Point(290, y), false);
-            _testButton.Click += async (_, _) => await TestAsync();
-            _saveButton = CreateButton("保存", new Point(390, y), true);
+            _saveButton = CreateButton("保存", new Point(LabelX + RowW - 86, y), true);
             _saveButton.Click += (_, _) => SaveAndClose();
+            Controls.AddRange(new Control[] { _statusLabel, _saveButton });
+            AcceptButton = _saveButton;
 
-            Controls.AddRange(new Control[] { _statusLabel, _testButton, _saveButton });
+            ClientSize = new Size(500, y + 52);
 
             _urlBox.TextChanged += (_, _) => ApplyFieldsToSelected();
             _keyBox.TextChanged += (_, _) => ApplyFieldsToSelected();
             _modelBox.TextChanged += (_, _) => ApplyFieldsToSelected();
 
             RefreshList(0);
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            using var pen = new Pen(LineColor) { DashStyle = DashStyle.Dash };
+            foreach (int y in _separatorYs)
+            {
+                e.Graphics.DrawLine(pen, LabelX, y, LabelX + RowW, y);
+            }
+        }
+
+        private int AddSeparator(int y)
+        {
+            _separatorYs.Add(y + 8);
+            return y + 24;
         }
 
         #region 列表操作
@@ -276,6 +244,8 @@ namespace MiniTranslation
             _hotKeyBox.Text = HotKeyManager.Format(modifiers, key);
         }
 
+        #region 控件工厂
+
         private void AddLabel(string text, int x, int y)
         {
             Controls.Add(new Label
@@ -283,6 +253,17 @@ namespace MiniTranslation
                 AutoSize = true,
                 Location = new Point(x, y),
                 ForeColor = TextMain,
+                Text = text,
+            });
+        }
+
+        private void AddMutedLabel(string text, int x, int y)
+        {
+            Controls.Add(new Label
+            {
+                AutoSize = true,
+                Location = new Point(x, y),
+                ForeColor = TextMuted,
                 Text = text,
             });
         }
@@ -297,6 +278,21 @@ namespace MiniTranslation
             };
             Controls.Add(box);
             return box;
+        }
+
+        private CheckBox AddCheckBox(string text, ref int y, bool isChecked)
+        {
+            var check = new CheckBox
+            {
+                AutoSize = true,
+                Location = new Point(LabelX, y),
+                ForeColor = TextMain,
+                Text = text,
+                Checked = isChecked,
+            };
+            Controls.Add(check);
+            y += 36;
+            return check;
         }
 
         private Button CreateSmallButton(string text, Point location, EventHandler onClick)
@@ -323,6 +319,8 @@ namespace MiniTranslation
             button.FlatAppearance.BorderSize = 1;
             return button;
         }
+
+        #endregion
 
         private async Task TestAsync()
         {
@@ -353,9 +351,15 @@ namespace MiniTranslation
 
         private async Task CheckUpdateAsync()
         {
-            if (_update != null)
+            if (!UpdateManager.Enabled)
             {
-                await StartUpdateAsync();
+                SetStatus("调试模式下已禁用更新。", isError: true);
+                return;
+            }
+            if (_pending != null)
+            {
+                UpdateManager.Apply(_pending);
+                Application.Exit();
                 return;
             }
 
@@ -363,32 +367,8 @@ namespace MiniTranslation
             SetStatus("检查更新中…", isError: false);
             try
             {
-                var info = await UpdateChecker.CheckAsync();
-                if (info == null)
-                {
-                    SetStatus("已是最新版本。", isError: false);
-                }
-                else
-                {
-                    SetStatus($"发现新版本 {info.Version}。", isError: false);
-                    _update = info;
-                    _updateButton.Text = "立即更新";
-                }
-            }
-            finally
-            {
-                _updateButton.Enabled = true;
-            }
-        }
-
-        private async Task StartUpdateAsync()
-        {
-            _updateButton.Enabled = false;
-            _saveButton.Enabled = false;
-            try
-            {
                 int lastPercent = -1;
-                await Updater.DownloadAndApplyAsync(_update!, percent =>
+                var pending = await UpdateManager.CheckAndDownloadAsync(percent =>
                 {
                     if (percent != lastPercent)
                     {
@@ -396,14 +376,24 @@ namespace MiniTranslation
                         SetStatus($"下载更新 {percent}%", isError: false);
                     }
                 });
-                SetStatus("更新已就绪，正在重启…", isError: false);
-                Application.Exit();
+                if (pending == null)
+                {
+                    SetStatus("已是最新版本。", isError: false);
+                }
+                else
+                {
+                    _pending = pending;
+                    _updateButton.Text = "重启并更新";
+                    SetStatus($"已下载 {pending.Version}，将在下次启动时安装。", isError: false);
+                }
             }
             catch (Exception ex)
             {
                 SetStatus("更新失败：" + ex.Message, isError: true);
+            }
+            finally
+            {
                 _updateButton.Enabled = true;
-                _saveButton.Enabled = true;
             }
         }
 
@@ -425,11 +415,11 @@ namespace MiniTranslation
             _settings.HideOnFocusLost = _hideOnFocusLostCheck.Checked;
             _settings.AutoCopyResult = _autoCopyCheck.Checked;
             _settings.AutoCheckUpdate = _autoUpdateCheck.Checked;
-            AutoStart.SetEnabled(_autoStartCheck.Checked);
             if (HotKeyManager.TryParse(_hotKeyBox.Text, out _, out _))
             {
                 _settings.HotKey = _hotKeyBox.Text;
             }
+            AutoStart.SetEnabled(_autoStartCheck.Checked);
             _settings.Save();
             Close();
         }
