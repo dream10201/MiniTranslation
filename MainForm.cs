@@ -48,6 +48,8 @@ namespace MiniTranslation
             KeyPreview = true;
             Font = UiFont;
             DoubleBuffered = true;
+            // 尺寸变化时整体重绘，否则 OnPaint 画的边框会在原位置留下残影
+            SetStyle(ControlStyles.ResizeRedraw, true);
 
             _inputBox = new TextBox
             {
