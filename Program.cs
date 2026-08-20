@@ -1,19 +1,20 @@
-﻿using System;
-using System.Windows.Forms;
-
 namespace MiniTranslation
 {
-    static class Program
+    internal static class Program
     {
-        /// <summary>
-        /// 应用程序的主入口点。
-        /// </summary>
         [STAThread]
-        static void Main()
+        private static void Main()
         {
+            using var mutex = new Mutex(true, "MiniTranslation_SingleInstance", out bool createdNew);
+            if (!createdNew)
+            {
+                return;
+            }
+
+            Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new main());
+            Application.Run(new MainForm());
         }
     }
 }
