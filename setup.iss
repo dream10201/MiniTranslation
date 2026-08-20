@@ -13,8 +13,9 @@ AppPublisher=dream10201
 AppPublisherURL=https://github.com/dream10201/MiniTranslation
 DefaultDirName={autopf}\MiniTranslation
 DisableProgramGroupPage=yes
-; 按当前用户安装，无需管理员权限
+; 默认按当前用户安装（免提权）；启动时可选“为所有用户安装”自动申请提权
 PrivilegesRequired=lowest
+PrivilegesRequiredOverridesAllowed=dialog commandline
 OutputDir=.
 OutputBaseFilename=MiniTranslation-Setup
 SetupIconFile=img.ico

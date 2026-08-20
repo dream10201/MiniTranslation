@@ -83,7 +83,9 @@ namespace MiniTranslation.Core
         {
             if (pending.IsInstaller)
             {
-                Process.Start(new ProcessStartInfo(pending.File, "/VERYSILENT /NORESTART")
+                // 跟随原安装模式，按机器安装的会触发 UAC 提权
+                string scopeArg = GetInstallScope() == InstallScope.Machine ? "/ALLUSERS" : "/CURRENTUSER";
+                Process.Start(new ProcessStartInfo(pending.File, $"/VERYSILENT /NORESTART {scopeArg}")
                 {
                     UseShellExecute = true,
                 });
@@ -150,12 +152,23 @@ namespace MiniTranslation.Core
                    candidate > current;
         }
 
+        private enum InstallScope { None, User, Machine }
+
         /// <summary>是否为安装版（存在 Inno 卸载注册表键且路径匹配）。</summary>
-        private static bool IsInstalledCopy()
+        private static bool IsInstalledCopy() => GetInstallScope() != InstallScope.None;
+
+        private static InstallScope GetInstallScope()
+        {
+            if (MatchesInstallLocation(Registry.CurrentUser)) return InstallScope.User;
+            if (MatchesInstallLocation(Registry.LocalMachine)) return InstallScope.Machine;
+            return InstallScope.None;
+        }
+
+        private static bool MatchesInstallLocation(RegistryKey root)
         {
             try
             {
-                using var key = Registry.CurrentUser.OpenSubKey(UninstallKey);
+                using var key = root.OpenSubKey(UninstallKey);
                 return key?.GetValue("InstallLocation") is string location &&
                        location.Length > 0 &&
                        Application.ExecutablePath.StartsWith(location.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase);
