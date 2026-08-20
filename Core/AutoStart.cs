@@ -1,25 +1,16 @@
-using Microsoft.Win32;
-
 namespace MiniTranslation.Core
 {
-    /// <summary>开机自启动，基于当前用户的 Run 注册表键。</summary>
+    /// <summary>开机自启动，基于任务计划程序的登录触发任务。</summary>
     public static class AutoStart
     {
-        private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-        private const string ValueName = "MiniTranslation";
-
-        // 旧版安装包用启动文件夹快捷方式实现自启动，需一并识别与清理
-        private static string StartupShortcut =>
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup), "MiniTranslation.lnk");
+        private const string TaskName = "MiniTranslation";
 
         public static bool IsEnabled()
         {
             try
             {
-                if (File.Exists(StartupShortcut)) return true;
-                using var key = Registry.CurrentUser.OpenSubKey(RunKey);
-                return key?.GetValue(ValueName) is string path &&
-                       string.Equals(path.Trim('"'), Application.ExecutablePath, StringComparison.OrdinalIgnoreCase);
+                dynamic service = CreateService();
+                return service.GetFolder("\\").GetTask(TaskName) != null;
             }
             catch
             {
@@ -31,22 +22,41 @@ namespace MiniTranslation.Core
         {
             try
             {
-                using var key = Registry.CurrentUser.CreateSubKey(RunKey);
+                dynamic service = CreateService();
+                dynamic folder = service.GetFolder("\\");
                 if (enabled)
                 {
-                    key.SetValue(ValueName, $"\"{Application.ExecutablePath}\"");
+                    dynamic task = service.NewTask(0);
+                    // 不限运行时长，且不受电池供电限制，否则笔记本离电时不会启动
+                    task.Settings.ExecutionTimeLimit = "PT0S";
+                    task.Settings.DisallowStartIfOnBatteries = false;
+                    task.Settings.StopIfGoingOnBatteries = false;
+                    dynamic trigger = task.Triggers.Create(9); // TASK_TRIGGER_LOGON
+                    trigger.UserId = $"{Environment.UserDomainName}\\{Environment.UserName}";
+                    dynamic action = task.Actions.Create(0); // TASK_ACTION_EXEC
+                    action.Path = Application.ExecutablePath;
+                    folder.RegisterTaskDefinition(TaskName, task,
+                        6,    // TASK_CREATE_OR_UPDATE
+                        null, null,
+                        3,    // TASK_LOGON_INTERACTIVE_TOKEN
+                        null);
                 }
                 else
                 {
-                    key.DeleteValue(ValueName, throwOnMissingValue: false);
+                    folder.DeleteTask(TaskName, 0);
                 }
-                // 统一到注册表方案，无论开关都清掉旧快捷方式，避免双重自启
-                if (File.Exists(StartupShortcut)) File.Delete(StartupShortcut);
             }
             catch
             {
-                // 注册表/文件不可写时忽略
+                // 任务不存在或计划程序服务不可用时忽略
             }
+        }
+
+        private static dynamic CreateService()
+        {
+            dynamic service = Activator.CreateInstance(Type.GetTypeFromProgID("Schedule.Service")!)!;
+            service.Connect();
+            return service;
         }
     }
 }

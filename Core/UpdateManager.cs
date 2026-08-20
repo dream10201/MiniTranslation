@@ -92,14 +92,19 @@ namespace MiniTranslation.Core
                 if (GetInstallScope() == InstallScope.Machine && TryRunUpdateTask())
                 {
                     // 计划任务以最高权限静默安装，普通用户触发不弹 UAC
-                    return;
                 }
-                // 用户级安装，或计划任务不可用时回退直接静默安装（后者会弹一次 UAC）
-                string scopeArg = GetInstallScope() == InstallScope.Machine ? "/ALLUSERS" : "/CURRENTUSER";
-                Process.Start(new ProcessStartInfo(pending.File, $"/VERYSILENT /NORESTART {scopeArg}")
+                else
                 {
-                    UseShellExecute = true,
-                });
+                    // 用户级安装，或计划任务不可用时回退直接静默安装（后者会弹一次 UAC）
+                    string scopeArg = GetInstallScope() == InstallScope.Machine ? "/ALLUSERS" : "/CURRENTUSER";
+                    Process.Start(new ProcessStartInfo(pending.File, $"/VERYSILENT /NORESTART {scopeArg}")
+                    {
+                        UseShellExecute = true,
+                    });
+                }
+                // 静默安装完成后由本脚本以当前用户身份重启应用；
+                // 不能交给安装包拉起，否则机器级更新会让应用以管理员身份运行
+                StartRelaunchScript();
                 return;
             }
 
@@ -181,6 +186,24 @@ namespace MiniTranslation.Core
             {
                 return false;
             }
+        }
+
+        /// <summary>等安装包进程结束后重启应用（脚本身份为当前用户，不带管理员令牌）。</summary>
+        private static void StartRelaunchScript()
+        {
+            string currentExe = Application.ExecutablePath;
+            string script = Path.Combine(Dir, "relaunch.cmd");
+            File.WriteAllText(script,
+                "@echo off\r\n" +
+                "timeout /t 3 /nobreak >nul\r\n" +
+                ":wait\r\n" +
+                "tasklist /fi \"IMAGENAME eq MiniTranslation-Setup.exe\" | find /i \"MiniTranslation-Setup.exe\" >nul && (timeout /t 1 /nobreak >nul & goto wait)\r\n" +
+                $"start \"\" \"{currentExe}\"\r\n");
+            Process.Start(new ProcessStartInfo(script)
+            {
+                UseShellExecute = true,
+                WindowStyle = ProcessWindowStyle.Hidden,
+            });
         }
 
         private enum InstallScope { None, User, Machine }

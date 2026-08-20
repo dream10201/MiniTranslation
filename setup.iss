@@ -13,9 +13,9 @@ AppPublisher=dream10201
 AppPublisherURL=https://github.com/dream10201/MiniTranslation
 DefaultDirName={autopf}\MiniTranslation
 DisableProgramGroupPage=yes
-; 默认按当前用户安装（免提权）；启动时可选“为所有用户安装”自动申请提权
-PrivilegesRequired=lowest
-PrivilegesRequiredOverridesAllowed=dialog commandline
+; 默认提权安装到 Program Files；命令行 /CURRENTUSER 可切换为当前用户安装
+PrivilegesRequired=admin
+PrivilegesRequiredOverridesAllowed=commandline
 OutputDir=.
 OutputBaseFilename=MiniTranslation-Setup
 SetupIconFile=img.ico
@@ -35,20 +35,20 @@ Source: "publish\MiniTranslation.exe"; DestDir: "{app}"; Flags: ignoreversion
 [Icons]
 Name: "{autoprograms}\MiniTranslation"; Filename: "{app}\MiniTranslation.exe"
 
-[Registry]
-; 与应用内“开机自启动”开关使用同一个 Run 注册表键
-Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "MiniTranslation"; ValueData: """{app}\MiniTranslation.exe"""; Tasks: startup; Flags: uninsdeletevalue
-
 [Dirs]
 ; 机器级安装：更新包下载目录，授普通用户写入，供计划任务读取执行
 Name: "{commonappdata}\MiniTranslation\update"; Permissions: users-modify; Check: IsAdminInstallMode
 
 [Run]
-; 机器级安装：创建以最高权限运行的更新任务，之后普通用户触发即可静默更新，不再弹 UAC
-Filename: "{sys}\schtasks.exe"; Parameters: "/create /tn ""MiniTranslation Update"" /tr ""{commonappdata}\MiniTranslation\update\MiniTranslation-Setup.exe /VERYSILENT /NORESTART /ALLUSERS"" /sc ONCE /st 00:00 /rl HIGHEST /f"; Flags: runhidden; Check: IsAdminInstallMode
-; 不加 skipifsilent：静默自动更新完成后也会重新拉起应用
-Filename: "{app}\MiniTranslation.exe"; Description: "启动 MiniTranslation"; Flags: nowait postinstall
+; 开机自启动：登录触发的计划任务，与应用内开关同名同定义。
+; 不用 schtasks 创建，其默认设置在电池供电时不运行、且有 72 小时时限
+Filename: "powershell.exe"; Parameters: "-NoProfile -Command ""Register-ScheduledTask -TaskName 'MiniTranslation' -Force -Action (New-ScheduledTaskAction -Execute '{app}\MiniTranslation.exe') -Trigger (New-ScheduledTaskTrigger -AtLogOn) -Settings (New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan))"""; Flags: runhidden; Tasks: startup
+; 机器级安装：创建以最高权限运行、仅手动触发的更新任务，之后普通用户触发即可静默更新，不再弹 UAC
+Filename: "powershell.exe"; Parameters: "-NoProfile -Command ""Register-ScheduledTask -TaskName 'MiniTranslation Update' -Force -RunLevel Highest -Action (New-ScheduledTaskAction -Execute '{commonappdata}\MiniTranslation\update\MiniTranslation-Setup.exe' -Argument '/VERYSILENT /NORESTART /ALLUSERS') -Settings (New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan))"""; Flags: runhidden; Check: IsAdminInstallMode
+; skipifsilent：静默自动更新后由应用侧脚本以当前用户身份重启，安装包不拉起（机器级更新时安装包带管理员令牌）
+Filename: "{app}\MiniTranslation.exe"; Description: "启动 MiniTranslation"; Flags: nowait postinstall skipifsilent
 
 [UninstallRun]
-; 卸载时移除更新计划任务
+; 卸载时移除自启动与更新计划任务
+Filename: "{sys}\schtasks.exe"; Parameters: "/delete /tn ""MiniTranslation"" /f"; Flags: runhidden; RunOnceId: "DelAutostartTask"
 Filename: "{sys}\schtasks.exe"; Parameters: "/delete /tn ""MiniTranslation Update"" /f"; Flags: runhidden; RunOnceId: "DelUpdateTask"; Check: IsAdminInstallMode
