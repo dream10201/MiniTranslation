@@ -310,6 +310,9 @@ namespace MiniTranslation
             {
                 _speech.Stop();
                 _translateCts?.Cancel();
+                // 清掉可能残留的半截流式译文
+                _speakText = "";
+                ShowResult("", isError: false);
                 Hide();
             }
             _isShown = visible;
