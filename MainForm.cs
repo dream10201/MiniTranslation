@@ -18,7 +18,6 @@ namespace MiniTranslation
         private readonly Panel _separator;
         private readonly Label _speakLabel;
         private readonly Label _copyLabel;
-        private readonly Label _settingsLabel;
         private readonly Label _statusLabel;
         private readonly NotifyIcon _notifyIcon;
 
@@ -26,7 +25,9 @@ namespace MiniTranslation
         private readonly SpeechService _speech = new();
         private CancellationTokenSource? _translateCts;
         private string _speakText = "";
+        private string _lastClipboardText = "";
         private bool _isShown;
+        private int _actionBarTop;
 
         private const int ContentWidth = 400;
         private const int Margin_ = 18;
@@ -85,7 +86,6 @@ namespace MiniTranslation
 
             _speakLabel = CreateActionLabel("\U0001F50A 朗读", (_, _) => Speak());
             _copyLabel = CreateActionLabel("复制", (_, _) => CopyResult());
-            _settingsLabel = CreateActionLabel("设置", (_, _) => OpenSettings());
             _statusLabel = new Label
             {
                 AutoSize = true,
@@ -95,7 +95,7 @@ namespace MiniTranslation
                 Text = "",
             };
 
-            Controls.AddRange(new Control[] { _inputBox, _separator, _resultBox, _speakLabel, _copyLabel, _settingsLabel, _statusLabel });
+            Controls.AddRange(new Control[] { _inputBox, _separator, _resultBox, _speakLabel, _copyLabel, _statusLabel });
 
             var trayMenu = new ContextMenuStrip();
             trayMenu.Items.Add("显示", null, (_, _) => SetVisible(true));
@@ -232,6 +232,7 @@ namespace MiniTranslation
                 Show();
                 Activate();
                 _inputBox.SelectAll();
+                TryTranslateClipboard();
             }
             else
             {
@@ -239,6 +240,26 @@ namespace MiniTranslation
                 Hide();
             }
             _isShown = visible;
+        }
+
+        /// <summary>显示窗口时，若剪贴板有新的文本则自动填入并翻译。</summary>
+        private void TryTranslateClipboard()
+        {
+            if (!_settings.IsConfigured) return;
+            string clip;
+            try
+            {
+                if (!Clipboard.ContainsText()) return;
+                clip = Clipboard.GetText().Trim();
+            }
+            catch
+            {
+                return; // 剪贴板被其他程序占用
+            }
+            if (clip.Length == 0 || clip == _lastClipboardText) return;
+            _lastClipboardText = clip;
+            _inputBox.Text = clip;
+            StartTranslate();
         }
 
         private void InputBox_KeyDown(object? sender, KeyEventArgs e)
@@ -281,7 +302,7 @@ namespace MiniTranslation
             _translateCts?.Cancel();
             var cts = new CancellationTokenSource();
             _translateCts = cts;
-            _statusLabel.Text = "翻译中…";
+            SetStatus("翻译中…");
 
             try
             {
@@ -302,7 +323,7 @@ namespace MiniTranslation
             }
             finally
             {
-                if (_translateCts == cts) _statusLabel.Text = "";
+                if (_translateCts == cts) SetStatus("");
             }
         }
 
@@ -326,12 +347,21 @@ namespace MiniTranslation
                 _resultBox.Height = lines * (_resultBox.Font.Height + 4);
             }
 
-            int barTop = (_resultBox.TextLength == 0 ? _separator.Bottom : _resultBox.Bottom) + 12;
-            _speakLabel.Location = new Point(Margin_ - 2, barTop);
-            _copyLabel.Location = new Point(_speakLabel.Right + 14, barTop);
-            _settingsLabel.Location = new Point(_copyLabel.Right + 14, barTop);
-            _statusLabel.Location = new Point(Margin_ + ContentWidth - _statusLabel.Width, barTop);
+            _actionBarTop = (_resultBox.TextLength == 0 ? _separator.Bottom : _resultBox.Bottom) + 12;
+            _speakLabel.Location = new Point(Margin_ - 2, _actionBarTop);
+            _copyLabel.Location = new Point(_speakLabel.Right + 14, _actionBarTop);
+            PositionStatusLabel();
             ClientSize = new Size(ContentWidth + Margin_ * 2, _speakLabel.Bottom + 14);
+        }
+
+        /// <summary>状态文字右对齐；文字变化后需重新计算位置。</summary>
+        private void PositionStatusLabel() =>
+            _statusLabel.Location = new Point(Margin_ + ContentWidth - _statusLabel.PreferredWidth, _actionBarTop);
+
+        private void SetStatus(string text)
+        {
+            _statusLabel.Text = text;
+            PositionStatusLabel();
         }
 
         private void Speak()
@@ -347,8 +377,8 @@ namespace MiniTranslation
             if (_resultBox.TextLength > 0)
             {
                 Clipboard.SetText(_resultBox.Text);
-                _statusLabel.Text = "已复制";
-                LayoutContent();
+                _lastClipboardText = _resultBox.Text.Trim(); // 复制的译文不触发自动翻译
+                SetStatus("已复制");
             }
         }
 
