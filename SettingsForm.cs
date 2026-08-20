@@ -13,6 +13,7 @@ namespace MiniTranslation
         private readonly TextBox _urlBox;
         private readonly TextBox _keyBox;
         private readonly TextBox _modelBox;
+        private readonly CheckBox _clipboardCheck;
         private readonly Button _testButton;
         private readonly Button _saveButton;
         private readonly Label _statusLabel;
@@ -35,7 +36,7 @@ namespace MiniTranslation
 
             AddLabel("API 地址", labelX, y + 4);
             _urlBox = AddTextBox(inputX, y, inputW, settings.ApiBaseUrl);
-            _urlBox.PlaceholderText = "https://api.deepseek.com/v1";
+            _urlBox.PlaceholderText = "https://api.deepseek.com";
             y += 44;
 
             AddLabel("API Key", labelX, y + 4);
@@ -46,18 +47,18 @@ namespace MiniTranslation
             AddLabel("模型", labelX, y + 4);
             _modelBox = AddTextBox(inputX, y, inputW, settings.Model);
             _modelBox.PlaceholderText = "deepseek-chat";
-            y += 40;
+            y += 44;
 
-            var hint = new Label
+            _clipboardCheck = new CheckBox
             {
                 AutoSize = true,
                 Location = new Point(inputX, y),
-                Font = new Font("Microsoft YaHei UI", 8.5F),
-                ForeColor = TextMuted,
-                Text = "兼容 OpenAI 接口格式的服务均可使用（OpenAI / DeepSeek / Kimi / Ollama…）",
+                ForeColor = TextMain,
+                Text = "显示窗口时自动翻译剪贴板内容",
+                Checked = settings.AutoTranslateClipboard,
             };
-            Controls.Add(hint);
-            y += 34;
+            Controls.Add(_clipboardCheck);
+            y += 40;
 
             _statusLabel = new Label
             {
@@ -163,6 +164,7 @@ namespace MiniTranslation
             _settings.ApiBaseUrl = candidate.ApiBaseUrl;
             _settings.ApiKey = candidate.ApiKey;
             _settings.Model = candidate.Model;
+            _settings.AutoTranslateClipboard = _clipboardCheck.Checked;
             _settings.Save();
             Close();
         }

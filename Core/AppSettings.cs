@@ -11,6 +11,7 @@ namespace MiniTranslation.Core
         public string ApiBaseUrl { get; set; } = "";
         public string ApiKey { get; set; } = "";
         public string Model { get; set; } = "";
+        public bool AutoTranslateClipboard { get; set; } = true;
 
         [JsonIgnore]
         public bool IsConfigured =>

@@ -245,7 +245,7 @@ namespace MiniTranslation
         /// <summary>显示窗口时，若剪贴板有新的文本则自动填入并翻译。</summary>
         private void TryTranslateClipboard()
         {
-            if (!_settings.IsConfigured) return;
+            if (!_settings.AutoTranslateClipboard || !_settings.IsConfigured) return;
             string clip;
             try
             {

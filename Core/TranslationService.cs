@@ -77,12 +77,19 @@ namespace MiniTranslation.Core
             return zh >= en;
         }
 
+        /// <summary>补全接口路径：地址没带版本段（如 /v1）时自动加上。</summary>
         private static string BuildEndpoint(string baseUrl)
         {
             string url = baseUrl.TrimEnd('/');
-            return url.EndsWith("/chat/completions", StringComparison.OrdinalIgnoreCase)
-                ? url
-                : url + "/chat/completions";
+            if (url.EndsWith("/chat/completions", StringComparison.OrdinalIgnoreCase))
+            {
+                return url;
+            }
+            if (!System.Text.RegularExpressions.Regex.IsMatch(url, @"/v\d+$", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+            {
+                url += "/v1";
+            }
+            return url + "/chat/completions";
         }
 
         private static string Truncate(string s, int max) => s.Length <= max ? s : s[..max] + "…";
