@@ -47,6 +47,7 @@ namespace MiniTranslation.Core
         public List<ApiProfile> Profiles { get; set; } = new();
         public bool AutoTranslateClipboard { get; set; } = true;
         public bool AutoTranslateSelection { get; set; } = false;
+        public string HotKey { get; set; } = "Alt+Q";
 
         [JsonIgnore]
         public bool IsConfigured => Profiles.Any(p => p.IsComplete);

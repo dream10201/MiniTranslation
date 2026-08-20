@@ -204,9 +204,20 @@ namespace MiniTranslation
         {
             base.OnHandleCreated(e);
             ApplyRoundedCorners(Handle);
-            if (!HotKeyManager.Register(Handle, HotKeyManager.Modifiers.Alt, Keys.Q))
+            ApplyHotKey();
+        }
+
+        private void ApplyHotKey()
+        {
+            HotKeyManager.Unregister(Handle);
+            if (!HotKeyManager.TryParse(_settings.HotKey, out var modifiers, out var key))
             {
-                _notifyIcon?.ShowBalloonTip(3000, "MiniTranslation", "热键 Alt+Q 注册失败，可能被其他程序占用。", ToolTipIcon.Warning);
+                HotKeyManager.TryParse("Alt+Q", out modifiers, out key);
+            }
+            if (!HotKeyManager.Register(Handle, modifiers, key))
+            {
+                _notifyIcon?.ShowBalloonTip(3000, "MiniTranslation",
+                    $"热键 {_settings.HotKey} 注册失败，可能被其他程序占用。", ToolTipIcon.Warning);
             }
         }
 
@@ -502,6 +513,7 @@ namespace MiniTranslation
         {
             using var dialog = new SettingsForm(_settings);
             TopMost = false;
+            HotKeyManager.Unregister(Handle); // 设置期间注销，避免录制快捷键时被全局热键拦截
             try
             {
                 dialog.ShowDialog(this);
@@ -509,6 +521,7 @@ namespace MiniTranslation
             finally
             {
                 TopMost = true;
+                ApplyHotKey();
             }
         }
 

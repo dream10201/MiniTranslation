@@ -29,5 +29,39 @@ namespace MiniTranslation.Core
             RegisterHotKey(hwnd, HotKeyId, modifiers, key);
 
         public static void Unregister(IntPtr hwnd) => UnregisterHotKey(hwnd, HotKeyId);
+
+        /// <summary>解析 "Ctrl+Alt+Q" 形式的快捷键描述。</summary>
+        public static bool TryParse(string text, out Modifiers modifiers, out Keys key)
+        {
+            modifiers = Modifiers.None;
+            key = Keys.None;
+            if (string.IsNullOrWhiteSpace(text)) return false;
+
+            foreach (string part in text.Split('+', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                switch (part.ToLowerInvariant())
+                {
+                    case "ctrl" or "control": modifiers |= Modifiers.Ctrl; break;
+                    case "alt": modifiers |= Modifiers.Alt; break;
+                    case "shift": modifiers |= Modifiers.Shift; break;
+                    case "win": modifiers |= Modifiers.Win; break;
+                    default:
+                        if (!Enum.TryParse(part, ignoreCase: true, out key)) return false;
+                        break;
+                }
+            }
+            return key != Keys.None;
+        }
+
+        public static string Format(Modifiers modifiers, Keys key)
+        {
+            var parts = new List<string>();
+            if (modifiers.HasFlag(Modifiers.Ctrl)) parts.Add("Ctrl");
+            if (modifiers.HasFlag(Modifiers.Alt)) parts.Add("Alt");
+            if (modifiers.HasFlag(Modifiers.Shift)) parts.Add("Shift");
+            if (modifiers.HasFlag(Modifiers.Win)) parts.Add("Win");
+            parts.Add(key.ToString());
+            return string.Join("+", parts);
+        }
     }
 }

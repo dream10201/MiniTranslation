@@ -16,6 +16,7 @@ namespace MiniTranslation
         private readonly TextBox _urlBox;
         private readonly TextBox _keyBox;
         private readonly TextBox _modelBox;
+        private readonly TextBox _hotKeyBox;
         private readonly CheckBox _clipboardCheck;
         private readonly CheckBox _selectionCheck;
         private readonly Button _testButton;
@@ -36,7 +37,7 @@ namespace MiniTranslation
             MinimizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
             BackColor = Color.White;
-            ClientSize = new Size(500, 478);
+            ClientSize = new Size(500, 520);
 
             const int labelX = 24, inputX = 110, inputW = 366, buttonW = 92;
 
@@ -79,6 +80,14 @@ namespace MiniTranslation
             AddLabel("模型", labelX, y + 4);
             _modelBox = AddTextBox(inputX, y, inputW);
             _modelBox.PlaceholderText = "deepseek-chat";
+            y += 42;
+
+            AddLabel("快捷键", labelX, y + 4);
+            _hotKeyBox = AddTextBox(inputX, y, 160);
+            _hotKeyBox.Text = settings.HotKey;
+            _hotKeyBox.ReadOnly = true;
+            _hotKeyBox.BackColor = Color.White;
+            _hotKeyBox.KeyDown += HotKeyBox_KeyDown;
             y += 46;
 
             _clipboardCheck = new CheckBox
@@ -186,6 +195,31 @@ namespace MiniTranslation
 
         #endregion
 
+        /// <summary>在输入框中直接按下组合键完成录制。</summary>
+        private void HotKeyBox_KeyDown(object? sender, KeyEventArgs e)
+        {
+            e.Handled = true;
+            e.SuppressKeyPress = true;
+
+            var key = e.KeyCode;
+            if (key is Keys.ControlKey or Keys.Menu or Keys.ShiftKey or Keys.LWin or Keys.RWin or Keys.None)
+            {
+                return; // 只按了修饰键，等待实际按键
+            }
+
+            var modifiers = HotKeyManager.Modifiers.None;
+            if (e.Control) modifiers |= HotKeyManager.Modifiers.Ctrl;
+            if (e.Alt) modifiers |= HotKeyManager.Modifiers.Alt;
+            if (e.Shift) modifiers |= HotKeyManager.Modifiers.Shift;
+
+            if (modifiers == HotKeyManager.Modifiers.None && key is not (>= Keys.F1 and <= Keys.F24))
+            {
+                SetStatus("快捷键需要包含 Ctrl/Alt/Shift 修饰键。", isError: true);
+                return;
+            }
+            _hotKeyBox.Text = HotKeyManager.Format(modifiers, key);
+        }
+
         private void AddLabel(string text, int x, int y)
         {
             Controls.Add(new Label
@@ -276,6 +310,10 @@ namespace MiniTranslation
                 .ToList();
             _settings.AutoTranslateClipboard = _clipboardCheck.Checked;
             _settings.AutoTranslateSelection = _selectionCheck.Checked;
+            if (HotKeyManager.TryParse(_hotKeyBox.Text, out _, out _))
+            {
+                _settings.HotKey = _hotKeyBox.Text;
+            }
             _settings.Save();
             Close();
         }
