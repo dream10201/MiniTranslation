@@ -64,17 +64,17 @@ namespace MiniTranslation.Core
             model.Contains("hy-mt", StringComparison.OrdinalIgnoreCase) ||
             model.Contains("hunyuan-mt", StringComparison.OrdinalIgnoreCase);
 
-        /// <summary>汉字占比高于字母时按中文处理，决定翻译方向与朗读内容。</summary>
+        /// <summary>判断输入是否以中文为主，决定翻译方向与朗读内容。</summary>
         public static bool IsMainlyChinese(string text)
         {
             int zh = 0, en = 0;
             foreach (char c in text)
             {
-                if (char.IsDigit(c) || char.IsWhiteSpace(c)) continue;
-                if (c > 127) zh++;
-                else en++;
+                if (c is >= (char)0x4E00 and <= (char)0x9FFF) zh++;   // CJK 汉字
+                else if (char.IsAsciiLetter(c)) en++;
             }
-            return zh >= en;
+            // 汉字信息密度高，加权计票，中文夹英文术语时仍判为中文
+            return zh > 0 && zh * 3 >= en;
         }
 
         /// <summary>补全接口路径：地址没带版本段（如 /v1）时自动加上。</summary>
