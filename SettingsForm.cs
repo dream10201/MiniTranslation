@@ -384,7 +384,7 @@ namespace MiniTranslation
                 {
                     _pending = pending;
                     _updateButton.Text = "重启并更新";
-                    SetStatus($"已下载 {pending.Version}，将在下次启动时安装。", isError: false);
+                    SetStatus($"已就绪 {pending.Version}，将在下次启动时启用。", isError: false);
                 }
             }
             catch (Exception ex)

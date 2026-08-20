@@ -1,30 +1,22 @@
 using System.Diagnostics;
 using System.IO.Compression;
-using System.Text.Json;
-using Microsoft.Win32;
 
 namespace MiniTranslation.Core
 {
-    public sealed record PendingUpdate(string Version, string File, bool IsInstaller);
+    public sealed record PendingUpdate(string Version, string ExePath);
 
     /// <summary>
-    /// 自动更新：后台检查并静默下载到本地，默认在下次启动时安装，
-    /// 也可立即重启安装。调试状态下整体禁用。
+    /// 自动更新（A/B 版本目录）：后台下载 zip 解压到本地版本目录即完成安装，
+    /// 启动时发现更高版本的目录就改为运行它。调试状态下整体禁用。
     /// </summary>
     public static class UpdateManager
     {
-        private const string UninstallKey =
-            @"Software\Microsoft\Windows\CurrentVersion\Uninstall\{8A785476-1AF1-47C8-95BB-7153DBAB8CB3}_is1";
-        private const string UpdateTaskName = "MiniTranslation Update";
+        private const string ExeName = "MiniTranslation.exe";
 
-        // 机器级安装用 ProgramData（计划任务可读、安装时已授普通用户写入），
-        // 其它用当前用户 AppData
-        private static string Dir => Path.Combine(
-            Environment.GetFolderPath(GetInstallScope() == InstallScope.Machine
-                ? Environment.SpecialFolder.CommonApplicationData
-                : Environment.SpecialFolder.ApplicationData),
-            "MiniTranslation", "update");
-        private static string MarkerPath => Path.Combine(Dir, "pending.json");
+        // 版本目录：%LocalAppData%\MiniTranslation\app\<版本号>\MiniTranslation.exe
+        private static readonly string AppDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "MiniTranslation", "app");
 
         private static readonly HttpClient Http = new() { Timeout = Timeout.InfiniteTimeSpan };
 
@@ -40,19 +32,26 @@ namespace MiniTranslation.Core
             }
         }
 
-        /// <summary>已下载待安装的更新；过期（已装上）或文件缺失时自动清理。</summary>
+        private static Version CurrentVersion =>
+            Version.TryParse(Application.ProductVersion.Split('+', '-')[0], out var v) ? v : new Version(0, 0);
+
+        /// <summary>已下载就绪、比当前运行版本新的版本；没有返回 null。</summary>
         public static PendingUpdate? GetPending()
         {
             try
             {
-                if (!File.Exists(MarkerPath)) return null;
-                var pending = JsonSerializer.Deserialize<PendingUpdate>(File.ReadAllText(MarkerPath));
-                if (pending == null || !File.Exists(pending.File) || !IsNewer(pending.Version))
+                if (!Directory.Exists(AppDir)) return null;
+                Version best = CurrentVersion;
+                string? exe = null;
+                foreach (string dir in Directory.GetDirectories(AppDir))
                 {
-                    Cleanup();
-                    return null;
+                    if (!Version.TryParse(Path.GetFileName(dir), out var version) || version <= best) continue;
+                    string candidate = Path.Combine(dir, ExeName);
+                    if (!File.Exists(candidate)) continue;
+                    best = version;
+                    exe = candidate;
                 }
-                return pending;
+                return exe == null ? null : new PendingUpdate(best.ToString(), exe);
             }
             catch
             {
@@ -60,18 +59,15 @@ namespace MiniTranslation.Core
             }
         }
 
-        /// <summary>启动时安装待装更新；返回 true 表示已发起安装，调用方应直接退出。</summary>
-        public static bool TryApplyPendingAtStartup()
+        /// <summary>启动时如有更新版本则改为运行它；返回 true 表示调用方应直接退出。</summary>
+        public static bool TryLaunchNewerAtStartup()
         {
             if (!Enabled) return false;
             var pending = GetPending();
-            if (pending == null) return false;
-            try
+            if (pending == null)
             {
-                File.Delete(MarkerPath); // 先删标记，安装失败也不会陷入重试循环
-            }
-            catch
-            {
+                CleanupOldVersions();
+                return false;
             }
             try
             {
@@ -84,46 +80,13 @@ namespace MiniTranslation.Core
             }
         }
 
-        /// <summary>发起安装；调用方随后应退出应用。</summary>
+        /// <summary>启动新版本；调用方随后应退出应用（新实例会等本进程释放单实例互斥量）。</summary>
         public static void Apply(PendingUpdate pending)
         {
-            if (pending.IsInstaller)
-            {
-                if (GetInstallScope() == InstallScope.Machine && TryRunUpdateTask())
-                {
-                    // 计划任务以最高权限静默安装，普通用户触发不弹 UAC
-                }
-                else
-                {
-                    // 用户级安装，或计划任务不可用时回退直接静默安装（后者会弹一次 UAC）
-                    string scopeArg = GetInstallScope() == InstallScope.Machine ? "/ALLUSERS" : "/CURRENTUSER";
-                    Process.Start(new ProcessStartInfo(pending.File, $"/VERYSILENT /NORESTART {scopeArg}")
-                    {
-                        UseShellExecute = true,
-                    });
-                }
-                // 静默安装完成后由本脚本以当前用户身份重启应用；
-                // 不能交给安装包拉起，否则机器级更新会让应用以管理员身份运行
-                StartRelaunchScript();
-                return;
-            }
-
-            // 绿色版：脚本等旧进程退出解锁后替换 exe 并重启
-            string currentExe = Application.ExecutablePath;
-            string script = Path.Combine(Dir, "apply.cmd");
-            File.WriteAllText(script,
-                "@echo off\r\n" +
-                ":retry\r\n" +
-                $"copy /y \"{pending.File}\" \"{currentExe}\" >nul 2>&1 || (timeout /t 1 /nobreak >nul & goto retry)\r\n" +
-                $"start \"\" \"{currentExe}\"\r\n");
-            Process.Start(new ProcessStartInfo(script)
-            {
-                UseShellExecute = true,
-                WindowStyle = ProcessWindowStyle.Hidden,
-            });
+            Process.Start(new ProcessStartInfo(pending.ExePath) { UseShellExecute = true });
         }
 
-        /// <summary>检查并静默下载新版本；已有待装更新时直接返回它。无新版本返回 null。</summary>
+        /// <summary>检查并静默下载解压新版本；已就绪时直接返回它。无新版本返回 null。</summary>
         public static async Task<PendingUpdate?> CheckAndDownloadAsync(Action<int>? onProgress = null)
         {
             if (!Enabled) return null;
@@ -131,113 +94,45 @@ namespace MiniTranslation.Core
             if (existing != null) return existing;
 
             var info = await UpdateChecker.CheckAsync();
-            if (info == null) return null;
-            Directory.CreateDirectory(Dir);
+            if (info?.ZipUrl == null) return null;
+            if (!Version.TryParse(info.Version.TrimStart('v', 'V'), out var version)) return null;
 
-            PendingUpdate pending;
-            if (IsInstalledCopy() && info.SetupUrl != null)
-            {
-                string path = Path.Combine(Dir, "MiniTranslation-Setup.exe");
-                await DownloadAsync(info.SetupUrl, path, onProgress);
-                pending = new PendingUpdate(info.Version, path, IsInstaller: true);
-            }
-            else if (info.ZipUrl != null)
-            {
-                string zipPath = Path.Combine(Dir, "update.zip");
-                await DownloadAsync(info.ZipUrl, zipPath, onProgress);
-                string extractDir = Path.Combine(Dir, "extracted");
-                if (Directory.Exists(extractDir)) Directory.Delete(extractDir, recursive: true);
-                ZipFile.ExtractToDirectory(zipPath, extractDir);
-                File.Delete(zipPath);
-                string newExe = Directory.GetFiles(extractDir, "*.exe", SearchOption.AllDirectories).First();
-                pending = new PendingUpdate(info.Version, newExe, IsInstaller: false);
-            }
-            else
-            {
-                return null;
-            }
+            Directory.CreateDirectory(AppDir);
+            string zipPath = Path.Combine(AppDir, "download.zip");
+            await DownloadAsync(info.ZipUrl, zipPath, onProgress);
 
-            File.WriteAllText(MarkerPath, JsonSerializer.Serialize(pending));
-            return pending;
+            // 先解压到临时目录，成功后再改名，避免半成品目录被当作可用版本
+            string stageDir = Path.Combine(AppDir, "staging");
+            if (Directory.Exists(stageDir)) Directory.Delete(stageDir, recursive: true);
+            ZipFile.ExtractToDirectory(zipPath, stageDir);
+            File.Delete(zipPath);
+            if (!File.Exists(Path.Combine(stageDir, ExeName))) return null;
+
+            string versionDir = Path.Combine(AppDir, version.ToString());
+            if (Directory.Exists(versionDir)) Directory.Delete(versionDir, recursive: true);
+            Directory.Move(stageDir, versionDir);
+            return new PendingUpdate(version.ToString(), Path.Combine(versionDir, ExeName));
         }
 
-        private static bool IsNewer(string tag)
-        {
-            if (!Version.TryParse(tag.TrimStart('v', 'V'), out var candidate)) return false;
-            return Version.TryParse(Application.ProductVersion.Split('+', '-')[0], out var current) &&
-                   candidate > current;
-        }
-
-        /// <summary>触发安装时创建的高权限计划任务；任务不存在或触发失败返回 false。</summary>
-        private static bool TryRunUpdateTask()
+        /// <summary>删除比当前运行版本旧的版本目录；正被占用的留到下次清。</summary>
+        private static void CleanupOldVersions()
         {
             try
             {
-                using var process = Process.Start(new ProcessStartInfo("schtasks.exe", $"/run /tn \"{UpdateTaskName}\"")
+                if (!Directory.Exists(AppDir)) return;
+                string self = Path.GetDirectoryName(Application.ExecutablePath)!;
+                foreach (string dir in Directory.GetDirectories(AppDir))
                 {
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                });
-                if (process == null) return false;
-                process.WaitForExit(5000);
-                return process.HasExited && process.ExitCode == 0;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        /// <summary>等安装包进程结束后重启应用（脚本身份为当前用户，不带管理员令牌）。</summary>
-        private static void StartRelaunchScript()
-        {
-            string currentExe = Application.ExecutablePath;
-            string script = Path.Combine(Dir, "relaunch.cmd");
-            File.WriteAllText(script,
-                "@echo off\r\n" +
-                "timeout /t 3 /nobreak >nul\r\n" +
-                ":wait\r\n" +
-                "tasklist /fi \"IMAGENAME eq MiniTranslation-Setup.exe\" | find /i \"MiniTranslation-Setup.exe\" >nul && (timeout /t 1 /nobreak >nul & goto wait)\r\n" +
-                $"start \"\" \"{currentExe}\"\r\n");
-            Process.Start(new ProcessStartInfo(script)
-            {
-                UseShellExecute = true,
-                WindowStyle = ProcessWindowStyle.Hidden,
-            });
-        }
-
-        private enum InstallScope { None, User, Machine }
-
-        /// <summary>是否为安装版（存在 Inno 卸载注册表键且路径匹配）。</summary>
-        private static bool IsInstalledCopy() => GetInstallScope() != InstallScope.None;
-
-        private static InstallScope GetInstallScope()
-        {
-            if (MatchesInstallLocation(Registry.CurrentUser)) return InstallScope.User;
-            if (MatchesInstallLocation(Registry.LocalMachine)) return InstallScope.Machine;
-            return InstallScope.None;
-        }
-
-        private static bool MatchesInstallLocation(RegistryKey root)
-        {
-            try
-            {
-                using var key = root.OpenSubKey(UninstallKey);
-                return key?.GetValue("InstallLocation") is string location &&
-                       location.Length > 0 &&
-                       Application.ExecutablePath.StartsWith(location.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase);
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        private static void Cleanup()
-        {
-            try
-            {
-                if (Directory.Exists(Dir)) Directory.Delete(Dir, recursive: true);
+                    if (string.Equals(dir, self, StringComparison.OrdinalIgnoreCase)) continue;
+                    if (Version.TryParse(Path.GetFileName(dir), out var version) && version >= CurrentVersion) continue;
+                    try
+                    {
+                        Directory.Delete(dir, recursive: true);
+                    }
+                    catch
+                    {
+                    }
+                }
             }
             catch
             {

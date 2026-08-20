@@ -735,7 +735,7 @@ namespace MiniTranslation
                 }
             };
             _notifyIcon.ShowBalloonTip(5000, "MiniTranslation",
-                $"新版本 {pending.Version} 已下载，将在下次启动时安装，点击立即重启更新。", ToolTipIcon.Info);
+                $"新版本 {pending.Version} 已就绪，将在下次启动时启用，点击立即重启。", ToolTipIcon.Info);
         }
 
         private void OpenSettings()
