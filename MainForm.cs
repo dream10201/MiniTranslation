@@ -415,6 +415,9 @@ namespace MiniTranslation
             _translateCts?.Cancel();
             var cts = new CancellationTokenSource();
             _translateCts = cts;
+            // 先清空上一次的结果，避免误当成本次译文
+            _speakText = "";
+            ShowResult("", isError: false);
             SetStatus("翻译中…");
 
             try
