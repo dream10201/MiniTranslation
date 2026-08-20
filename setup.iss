@@ -39,6 +39,16 @@ Name: "{autoprograms}\MiniTranslation"; Filename: "{app}\MiniTranslation.exe"
 ; 与应用内“开机自启动”开关使用同一个 Run 注册表键
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "MiniTranslation"; ValueData: """{app}\MiniTranslation.exe"""; Tasks: startup; Flags: uninsdeletevalue
 
+[Dirs]
+; 机器级安装：更新包下载目录，授普通用户写入，供计划任务读取执行
+Name: "{commonappdata}\MiniTranslation\update"; Permissions: users-modify; Check: IsAdminInstallMode
+
 [Run]
+; 机器级安装：创建以最高权限运行的更新任务，之后普通用户触发即可静默更新，不再弹 UAC
+Filename: "{sys}\schtasks.exe"; Parameters: "/create /tn ""MiniTranslation Update"" /tr ""{commonappdata}\MiniTranslation\update\MiniTranslation-Setup.exe /VERYSILENT /NORESTART /ALLUSERS"" /sc ONCE /st 00:00 /rl HIGHEST /f"; Flags: runhidden; Check: IsAdminInstallMode
 ; 不加 skipifsilent：静默自动更新完成后也会重新拉起应用
 Filename: "{app}\MiniTranslation.exe"; Description: "启动 MiniTranslation"; Flags: nowait postinstall
+
+[UninstallRun]
+; 卸载时移除更新计划任务
+Filename: "{sys}\schtasks.exe"; Parameters: "/delete /tn ""MiniTranslation Update"" /f"; Flags: runhidden; RunOnceId: "DelUpdateTask"; Check: IsAdminInstallMode

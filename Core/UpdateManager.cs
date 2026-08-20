@@ -15,10 +15,16 @@ namespace MiniTranslation.Core
     {
         private const string UninstallKey =
             @"Software\Microsoft\Windows\CurrentVersion\Uninstall\{8A785476-1AF1-47C8-95BB-7153DBAB8CB3}_is1";
+        private const string UpdateTaskName = "MiniTranslation Update";
 
-        private static readonly string Dir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MiniTranslation", "update");
-        private static readonly string MarkerPath = Path.Combine(Dir, "pending.json");
+        // 机器级安装用 ProgramData（计划任务可读、安装时已授普通用户写入），
+        // 其它用当前用户 AppData
+        private static string Dir => Path.Combine(
+            Environment.GetFolderPath(GetInstallScope() == InstallScope.Machine
+                ? Environment.SpecialFolder.CommonApplicationData
+                : Environment.SpecialFolder.ApplicationData),
+            "MiniTranslation", "update");
+        private static string MarkerPath => Path.Combine(Dir, "pending.json");
 
         private static readonly HttpClient Http = new() { Timeout = Timeout.InfiniteTimeSpan };
 
@@ -83,7 +89,12 @@ namespace MiniTranslation.Core
         {
             if (pending.IsInstaller)
             {
-                // 跟随原安装模式，按机器安装的会触发 UAC 提权
+                if (GetInstallScope() == InstallScope.Machine && TryRunUpdateTask())
+                {
+                    // 计划任务以最高权限静默安装，普通用户触发不弹 UAC
+                    return;
+                }
+                // 用户级安装，或计划任务不可用时回退直接静默安装（后者会弹一次 UAC）
                 string scopeArg = GetInstallScope() == InstallScope.Machine ? "/ALLUSERS" : "/CURRENTUSER";
                 Process.Start(new ProcessStartInfo(pending.File, $"/VERYSILENT /NORESTART {scopeArg}")
                 {
@@ -150,6 +161,26 @@ namespace MiniTranslation.Core
             if (!Version.TryParse(tag.TrimStart('v', 'V'), out var candidate)) return false;
             return Version.TryParse(Application.ProductVersion.Split('+', '-')[0], out var current) &&
                    candidate > current;
+        }
+
+        /// <summary>触发安装时创建的高权限计划任务；任务不存在或触发失败返回 false。</summary>
+        private static bool TryRunUpdateTask()
+        {
+            try
+            {
+                using var process = Process.Start(new ProcessStartInfo("schtasks.exe", $"/run /tn \"{UpdateTaskName}\"")
+                {
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                });
+                if (process == null) return false;
+                process.WaitForExit(5000);
+                return process.HasExited && process.ExitCode == 0;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private enum InstallScope { None, User, Machine }
