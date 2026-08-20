@@ -14,6 +14,7 @@ namespace MiniTranslation
         private readonly TextBox _keyBox;
         private readonly TextBox _modelBox;
         private readonly CheckBox _clipboardCheck;
+        private readonly CheckBox _selectionCheck;
         private readonly Button _testButton;
         private readonly Button _saveButton;
         private readonly Label _statusLabel;
@@ -29,7 +30,7 @@ namespace MiniTranslation
             MinimizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
             BackColor = Color.White;
-            ClientSize = new Size(460, 268);
+            ClientSize = new Size(460, 304);
 
             const int labelX = 24, inputX = 110, inputW = 320;
             int y = 24;
@@ -58,6 +59,17 @@ namespace MiniTranslation
                 Checked = settings.AutoTranslateClipboard,
             };
             Controls.Add(_clipboardCheck);
+            y += 36;
+
+            _selectionCheck = new CheckBox
+            {
+                AutoSize = true,
+                Location = new Point(inputX, y),
+                ForeColor = TextMain,
+                Text = "显示窗口时自动翻译选中的文本（模拟 Ctrl+C 获取）",
+                Checked = settings.AutoTranslateSelection,
+            };
+            Controls.Add(_selectionCheck);
             y += 40;
 
             _statusLabel = new Label
@@ -165,6 +177,7 @@ namespace MiniTranslation
             _settings.ApiKey = candidate.ApiKey;
             _settings.Model = candidate.Model;
             _settings.AutoTranslateClipboard = _clipboardCheck.Checked;
+            _settings.AutoTranslateSelection = _selectionCheck.Checked;
             _settings.Save();
             Close();
         }

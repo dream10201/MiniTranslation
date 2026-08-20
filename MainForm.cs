@@ -215,7 +215,18 @@ namespace MiniTranslation
             switch (m.Msg)
             {
                 case HotKeyManager.WmHotKey when m.WParam.ToInt32() == HotKeyManager.HotKeyId:
-                    SetVisible(!_isShown);
+                    if (_isShown)
+                    {
+                        SetVisible(false);
+                    }
+                    else if (_settings.AutoTranslateSelection && _settings.IsConfigured)
+                    {
+                        _ = ShowWithSelectionCaptureAsync();
+                    }
+                    else
+                    {
+                        SetVisible(true);
+                    }
                     break;
                 case HotKeyManager.WmQueryEndSession:
                     m.Result = (IntPtr)1;
@@ -243,23 +254,60 @@ namespace MiniTranslation
         }
 
         /// <summary>显示窗口时，若剪贴板有新的文本则自动填入并翻译。</summary>
-        private void TryTranslateClipboard()
+        private void TryTranslateClipboard(bool force = false)
         {
-            if (!_settings.AutoTranslateClipboard || !_settings.IsConfigured) return;
-            string clip;
-            try
-            {
-                if (!Clipboard.ContainsText()) return;
-                clip = Clipboard.GetText().Trim();
-            }
-            catch
-            {
-                return; // 剪贴板被其他程序占用
-            }
+            if (!force && !_settings.AutoTranslateClipboard) return;
+            if (!_settings.IsConfigured) return;
+            string clip = GetClipboardText();
             if (clip.Length == 0 || clip == _lastClipboardText) return;
             _lastClipboardText = clip;
             _inputBox.Text = clip;
             StartTranslate();
+        }
+
+        private static string GetClipboardText()
+        {
+            try
+            {
+                return Clipboard.ContainsText() ? Clipboard.GetText().Trim() : "";
+            }
+            catch
+            {
+                return ""; // 剪贴板被其他程序占用
+            }
+        }
+
+        /// <summary>向前台窗口模拟 Ctrl+C 抓取选中文本，再显示窗口并翻译。</summary>
+        private async Task ShowWithSelectionCaptureAsync()
+        {
+            bool captured = false;
+            try
+            {
+                string before = GetClipboardText();
+                SendCopyShortcut();
+                await Task.Delay(150);
+                string after = GetClipboardText();
+                captured = after.Length > 0 && after != before;
+            }
+            catch
+            {
+            }
+            SetVisible(true); // 若开启了剪贴板自动翻译，常规逻辑已能接住新内容
+            if (captured) TryTranslateClipboard(force: true);
+        }
+
+        [DllImport("user32.dll")]
+        private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+
+        private static void SendCopyShortcut()
+        {
+            const uint KeyUp = 0x2;
+            // 热键 Alt+Q 的 Alt 此时可能仍被按住，先补发抬起，避免变成 Ctrl+Alt+C
+            keybd_event(0x12, 0, KeyUp, UIntPtr.Zero); // Alt
+            keybd_event(0x11, 0, 0, UIntPtr.Zero);     // Ctrl 按下
+            keybd_event(0x43, 0, 0, UIntPtr.Zero);     // C 按下
+            keybd_event(0x43, 0, KeyUp, UIntPtr.Zero);
+            keybd_event(0x11, 0, KeyUp, UIntPtr.Zero);
         }
 
         private void InputBox_KeyDown(object? sender, KeyEventArgs e)

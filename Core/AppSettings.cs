@@ -12,6 +12,7 @@ namespace MiniTranslation.Core
         public string ApiKey { get; set; } = "";
         public string Model { get; set; } = "";
         public bool AutoTranslateClipboard { get; set; } = true;
+        public bool AutoTranslateSelection { get; set; } = false;
 
         [JsonIgnore]
         public bool IsConfigured =>
