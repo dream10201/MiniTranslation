@@ -45,7 +45,7 @@ namespace MiniTranslation
                 AutoSize = true,
                 Location = new Point(labelX, 20),
                 ForeColor = TextMuted,
-                Text = "接口列表（顺序即优先级，失败的会自动降权重试其余）",
+                Text = "接口列表",
             };
             Controls.Add(listLabel);
 
@@ -97,7 +97,7 @@ namespace MiniTranslation
                 AutoSize = true,
                 Location = new Point(labelX, y),
                 ForeColor = TextMain,
-                Text = "显示窗口时自动翻译选中的文本（模拟 Ctrl+C 获取）",
+                Text = "显示窗口时自动翻译选中的文本",
                 Checked = settings.AutoTranslateSelection,
             };
             Controls.Add(_selectionCheck);

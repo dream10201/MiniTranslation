@@ -106,7 +106,7 @@ namespace MiniTranslation
             _notifyIcon = new NotifyIcon
             {
                 Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath),
-                Text = "MiniTranslation（Alt+Q 显示/隐藏）",
+                Text = "MiniTranslation",
                 Visible = true,
                 ContextMenuStrip = trayMenu,
             };
