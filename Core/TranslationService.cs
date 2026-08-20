@@ -14,22 +14,28 @@ namespace MiniTranslation.Core
     {
         private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(60) };
 
-        private const string SystemPrompt =
-            "你是一个专业的翻译引擎。如果用户输入的内容主要是中文，请翻译成英文；否则翻译成简体中文。" +
-            "只输出译文本身，不要输出任何解释、注释或多余内容。";
-
         public static async Task<TranslationResult> TranslateAsync(string text, AppSettings settings, CancellationToken ct = default)
         {
-            var payload = new
+            bool sourceIsChinese = IsMainlyChinese(text);
+            // 腾讯混元 Hy-MT2 官方翻译模板（对通用聊天模型同样适用）
+            string prompt = $"将以下文本翻译为 {(sourceIsChinese ? "英文" : "简体中文")}，" +
+                            $"注意只需要输出翻译后的结果，不要额外解释： {text}";
+
+            var payload = new Dictionary<string, object>
             {
-                model = settings.Model,
-                messages = new object[]
-                {
-                    new { role = "system", content = SystemPrompt },
-                    new { role = "user", content = text },
-                },
-                stream = false,
+                ["model"] = settings.Model,
+                ["messages"] = new object[] { new { role = "user", content = prompt } },
+                ["stream"] = false,
             };
+            if (IsHunyuanMtModel(settings.Model))
+            {
+                // Hy-MT2 1.8B/7B 官方推荐采样参数；top_k/repetition_penalty 为
+                // vLLM 等本地推理服务的扩展参数，OpenAI 官方接口不接受，故仅对该模型附加
+                payload["temperature"] = 0.7;
+                payload["top_p"] = 0.6;
+                payload["top_k"] = 20;
+                payload["repetition_penalty"] = 1.05;
+            }
 
             using var request = new HttpRequestMessage(HttpMethod.Post, BuildEndpoint(settings.ApiBaseUrl))
             {
@@ -51,8 +57,12 @@ namespace MiniTranslation.Core
                 .GetProperty("content")
                 .GetString() ?? "";
 
-            return new TranslationResult(content.Trim(), IsMainlyChinese(text));
+            return new TranslationResult(content.Trim(), sourceIsChinese);
         }
+
+        private static bool IsHunyuanMtModel(string model) =>
+            model.Contains("hy-mt", StringComparison.OrdinalIgnoreCase) ||
+            model.Contains("hunyuan-mt", StringComparison.OrdinalIgnoreCase);
 
         /// <summary>汉字占比高于字母时按中文处理，决定翻译方向与朗读内容。</summary>
         public static bool IsMainlyChinese(string text)
