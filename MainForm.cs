@@ -297,14 +297,14 @@ namespace MiniTranslation
             base.WndProc(ref m);
         }
 
-        private void SetVisible(bool visible)
+        private void SetVisible(bool visible, bool suppressClipboard = false)
         {
             if (visible)
             {
                 Show();
                 Activate();
                 _inputBox.SelectAll();
-                TryTranslateClipboard();
+                if (!suppressClipboard) TryTranslateClipboard();
             }
             else
             {
@@ -347,6 +347,7 @@ namespace MiniTranslation
         {
             uint seqBefore = 0;
             bool sent = false;
+            IDataObject? backup = null;
             try
             {
                 // 稍等热键的物理按键松开；等不到也没关系，注入时会
@@ -355,6 +356,7 @@ namespace MiniTranslation
                 {
                     await Task.Delay(30);
                 }
+                backup = BackupClipboard();
                 seqBefore = GetClipboardSequenceNumber();
                 SendCopyShortcut();
                 sent = true;
@@ -364,8 +366,14 @@ namespace MiniTranslation
             {
             }
 
-            SetVisible(true);
-            if (!sent) return;
+            // 取词模式下不抢跑读剪贴板，否则可能把上一次复制的旧内容
+            // 当成本次选中文本翻译；只认注入 Ctrl+C 之后的序号变化
+            SetVisible(true, suppressClipboard: true);
+            if (!sent)
+            {
+                TryTranslateClipboard();
+                return;
+            }
 
             // 剪贴板序号只要发生过复制就会变化，与内容是否相同无关；
             // 放宽到 1.5s 兼容写剪贴板慢的程序
@@ -374,9 +382,56 @@ namespace MiniTranslation
                 if (GetClipboardSequenceNumber() != seqBefore)
                 {
                     TryTranslateClipboard(force: true);
+                    // 选中文本已读走，把用户原来的剪贴板内容还原回去
+                    if (backup != null) RestoreClipboard(backup);
                     return;
                 }
                 await Task.Delay(50);
+            }
+        }
+
+        /// <summary>快照剪贴板的常见格式（文本/RTF/HTML/图片/文件列表），失败返回 null。</summary>
+        private static IDataObject? BackupClipboard()
+        {
+            try
+            {
+                var src = Clipboard.GetDataObject();
+                if (src == null) return null;
+                var copy = new DataObject();
+                bool any = false;
+                foreach (var fmt in new[]
+                {
+                    DataFormats.UnicodeText, DataFormats.Rtf, DataFormats.Html,
+                    DataFormats.Bitmap, DataFormats.FileDrop,
+                })
+                {
+                    if (!src.GetDataPresent(fmt)) continue;
+                    var data = src.GetData(fmt);
+                    if (data == null) continue;
+                    copy.SetData(fmt, data);
+                    any = true;
+                }
+                return any ? copy : null;
+            }
+            catch
+            {
+                return null; // 剪贴板被占用或含无法快照的格式
+            }
+        }
+
+        private void RestoreClipboard(IDataObject backup)
+        {
+            try
+            {
+                Clipboard.SetDataObject(backup, copy: true);
+                // 还原的旧文本标记为已见，避免之后显示窗口时被自动翻译
+                if (backup.GetData(DataFormats.UnicodeText) is string text)
+                {
+                    _lastClipboardText = text.Trim();
+                }
+            }
+            catch
+            {
             }
         }
 
