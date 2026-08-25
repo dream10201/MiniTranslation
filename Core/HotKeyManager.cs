@@ -8,6 +8,11 @@ namespace MiniTranslation.Core
         public const int WmHotKey = 0x0312;
         public const int WmQueryEndSession = 0x0011;
         public const int HotKeyId = 0x3572;
+        public const string MouseMiddleDouble = "MouseMiddleDouble";
+
+        /// <summary>快捷键配置是否为鼠标中键双击（此类触发不走 RegisterHotKey）。</summary>
+        public static bool IsMouseTrigger(string? text) =>
+            string.Equals(text?.Trim(), MouseMiddleDouble, StringComparison.OrdinalIgnoreCase);
 
         [Flags]
         public enum Modifiers : uint

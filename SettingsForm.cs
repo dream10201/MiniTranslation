@@ -31,6 +31,7 @@ namespace MiniTranslation
         private readonly Button _updateButton;
         private readonly Label _statusLabel;
         private bool _loadingFields;
+        private int _lastMiddleDownTick;
         private PendingUpdate? _pending;
 
         private const int LabelX = 24, InputX = 110, InputW = 366, RowW = 452;
@@ -99,6 +100,7 @@ namespace MiniTranslation
             _hotKeyBox.ReadOnly = true;
             _hotKeyBox.BackColor = Color.White;
             _hotKeyBox.KeyDown += HotKeyBox_KeyDown;
+            _hotKeyBox.MouseDown += HotKeyBox_MouseDown;
             y += 44;
 
             _clipboardCheck = AddCheckBox("显示窗口时自动翻译剪贴板内容", ref y, settings.AutoTranslateClipboard);
@@ -242,6 +244,22 @@ namespace MiniTranslation
                 return;
             }
             _hotKeyBox.Text = HotKeyManager.Format(modifiers, key);
+        }
+
+        /// <summary>在输入框中连按两下鼠标中键录制为中键双击触发。</summary>
+        private void HotKeyBox_MouseDown(object? sender, MouseEventArgs e)
+        {
+            if (e.Button != MouseButtons.Middle) return;
+            int now = Environment.TickCount;
+            if (now - _lastMiddleDownTick <= SystemInformation.DoubleClickTime)
+            {
+                _lastMiddleDownTick = 0;
+                _hotKeyBox.Text = HotKeyManager.MouseMiddleDouble;
+            }
+            else
+            {
+                _lastMiddleDownTick = now;
+            }
         }
 
         #region 控件工厂
@@ -415,7 +433,7 @@ namespace MiniTranslation
             _settings.HideOnFocusLost = _hideOnFocusLostCheck.Checked;
             _settings.AutoCopyResult = _autoCopyCheck.Checked;
             _settings.AutoCheckUpdate = _autoUpdateCheck.Checked;
-            if (HotKeyManager.TryParse(_hotKeyBox.Text, out _, out _))
+            if (HotKeyManager.IsMouseTrigger(_hotKeyBox.Text) || HotKeyManager.TryParse(_hotKeyBox.Text, out _, out _))
             {
                 _settings.HotKey = _hotKeyBox.Text;
             }
