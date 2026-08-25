@@ -32,6 +32,8 @@ namespace MiniTranslation
         private readonly Label _statusLabel;
         private bool _loadingFields;
         private int _lastMiddleDownTick;
+        private Keys _lastModUpKey;
+        private int _lastModUpTick;
         private PendingUpdate? _pending;
 
         private const int LabelX = 24, InputX = 110, InputW = 366, RowW = 452;
@@ -100,6 +102,7 @@ namespace MiniTranslation
             _hotKeyBox.ReadOnly = true;
             _hotKeyBox.BackColor = Color.White;
             _hotKeyBox.KeyDown += HotKeyBox_KeyDown;
+            _hotKeyBox.KeyUp += HotKeyBox_KeyUp;
             _hotKeyBox.MouseDown += HotKeyBox_MouseDown;
             y += 44;
 
@@ -230,8 +233,17 @@ namespace MiniTranslation
             var key = e.KeyCode;
             if (key is Keys.ControlKey or Keys.Menu or Keys.ShiftKey or Keys.LWin or Keys.RWin or Keys.None)
             {
+                // 同一修饰键松开后快速再按，录制为连按触发
+                if (key == _lastModUpKey &&
+                    Environment.TickCount - _lastModUpTick <= SystemInformation.DoubleClickTime &&
+                    key is Keys.ControlKey or Keys.Menu or Keys.ShiftKey)
+                {
+                    _lastModUpKey = Keys.None;
+                    _hotKeyBox.Text = HotKeyManager.FormatDoubleModifier(key);
+                }
                 return; // 只按了修饰键，等待实际按键
             }
+            _lastModUpKey = Keys.None;
 
             var modifiers = HotKeyManager.Modifiers.None;
             if (e.Control) modifiers |= HotKeyManager.Modifiers.Ctrl;
@@ -244,6 +256,16 @@ namespace MiniTranslation
                 return;
             }
             _hotKeyBox.Text = HotKeyManager.Format(modifiers, key);
+        }
+
+        private void HotKeyBox_KeyUp(object? sender, KeyEventArgs e)
+        {
+            e.Handled = true;
+            if (e.KeyCode is Keys.ControlKey or Keys.Menu or Keys.ShiftKey)
+            {
+                _lastModUpKey = e.KeyCode;
+                _lastModUpTick = Environment.TickCount;
+            }
         }
 
         /// <summary>在输入框中连按两下鼠标中键录制为中键双击触发。</summary>
@@ -433,7 +455,9 @@ namespace MiniTranslation
             _settings.HideOnFocusLost = _hideOnFocusLostCheck.Checked;
             _settings.AutoCopyResult = _autoCopyCheck.Checked;
             _settings.AutoCheckUpdate = _autoUpdateCheck.Checked;
-            if (HotKeyManager.IsMouseTrigger(_hotKeyBox.Text) || HotKeyManager.TryParse(_hotKeyBox.Text, out _, out _))
+            if (HotKeyManager.IsMouseTrigger(_hotKeyBox.Text) ||
+                HotKeyManager.TryParseDoubleModifier(_hotKeyBox.Text, out _) ||
+                HotKeyManager.TryParse(_hotKeyBox.Text, out _, out _))
             {
                 _settings.HotKey = _hotKeyBox.Text;
             }

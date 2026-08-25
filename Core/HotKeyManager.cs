@@ -14,6 +14,27 @@ namespace MiniTranslation.Core
         public static bool IsMouseTrigger(string? text) =>
             string.Equals(text?.Trim(), MouseMiddleDouble, StringComparison.OrdinalIgnoreCase);
 
+        /// <summary>解析 "CtrlDouble" 形式的修饰键连按触发（此类触发不走 RegisterHotKey）。</summary>
+        public static bool TryParseDoubleModifier(string? text, out Keys key)
+        {
+            key = text?.Trim().ToLowerInvariant() switch
+            {
+                "ctrldouble" => Keys.ControlKey,
+                "altdouble" => Keys.Menu,
+                "shiftdouble" => Keys.ShiftKey,
+                _ => Keys.None,
+            };
+            return key != Keys.None;
+        }
+
+        public static string FormatDoubleModifier(Keys key) => key switch
+        {
+            Keys.ControlKey => "CtrlDouble",
+            Keys.Menu => "AltDouble",
+            Keys.ShiftKey => "ShiftDouble",
+            _ => "",
+        };
+
         [Flags]
         public enum Modifiers : uint
         {

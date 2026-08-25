@@ -261,12 +261,22 @@ namespace MiniTranslation
         {
             HotKeyManager.Unregister(Handle);
             MouseHook.Stop();
+            KeyboardHook.Stop();
             if (HotKeyManager.IsMouseTrigger(_settings.HotKey))
             {
                 if (!MouseHook.Start(Handle))
                 {
                     _notifyIcon?.ShowBalloonTip(3000, "MiniTranslation",
                         "鼠标中键双击监听安装失败。", ToolTipIcon.Warning);
+                }
+                return;
+            }
+            if (HotKeyManager.TryParseDoubleModifier(_settings.HotKey, out var doubleKey))
+            {
+                if (!KeyboardHook.Start(Handle, doubleKey))
+                {
+                    _notifyIcon?.ShowBalloonTip(3000, "MiniTranslation",
+                        $"快捷键 {_settings.HotKey} 监听安装失败。", ToolTipIcon.Warning);
                 }
                 return;
             }
@@ -813,6 +823,7 @@ namespace MiniTranslation
             TopMost = false;
             HotKeyManager.Unregister(Handle); // 设置期间注销，避免录制快捷键时被全局热键拦截
             MouseHook.Stop();
+            KeyboardHook.Stop();
             try
             {
                 dialog.ShowDialog(this);
@@ -828,6 +839,7 @@ namespace MiniTranslation
         {
             HotKeyManager.Unregister(Handle);
             MouseHook.Stop();
+            KeyboardHook.Stop();
             _translateCts?.Cancel();
             _notifyIcon.Visible = false;
             _notifyIcon.Dispose();
