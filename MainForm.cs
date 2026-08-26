@@ -296,7 +296,8 @@ namespace MiniTranslation
             switch (m.Msg)
             {
                 case HotKeyManager.WmHotKey when m.WParam.ToInt32() == HotKeyManager.HotKeyId:
-                    if (_isShown)
+                    // 窗口开着但焦点在别的程序时，热键应重新取词而不是把窗口藏起来
+                    if (_isShown && GetForegroundWindow() == Handle)
                     {
                         SetVisible(false);
                     }
@@ -344,7 +345,8 @@ namespace MiniTranslation
             if (!force && !_settings.AutoTranslateClipboard) return;
             if (!_settings.IsConfigured) return;
             string clip = GetClipboardText();
-            if (clip.Length == 0 || clip == _lastClipboardText) return;
+            // 取词模式（force）刚确认过复制成功，即使与上次文本相同也重新翻译
+            if (clip.Length == 0 || (!force && clip == _lastClipboardText)) return;
             _lastClipboardText = clip;
             _inputBox.Text = clip;
             StartTranslate();
@@ -407,6 +409,10 @@ namespace MiniTranslation
                     return;
                 }
                 await Task.Delay(50);
+            }
+            if (_isShown)
+            {
+                ShowResult("未能读取选中文本；若目标程序以管理员权限运行，本程序也需以管理员身份运行。", isError: true);
             }
         }
 
@@ -475,6 +481,9 @@ namespace MiniTranslation
 
         [DllImport("user32.dll")]
         private static extern uint GetClipboardSequenceNumber();
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
 
         [DllImport("user32.dll", SetLastError = true)]
         private static extern uint SendInput(uint nInputs, Input[] pInputs, int cbSize);
