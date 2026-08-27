@@ -43,9 +43,12 @@ namespace MiniTranslation.Core
             string text, ApiProfile profile, Action<string>? onProgress, CancellationToken ct)
         {
             bool sourceIsChinese = IsMainlyChinese(text);
-            // 腾讯混元 Hy-MT2 官方翻译模板（对通用聊天模型同样适用）
-            string prompt = $"将以下文本翻译为 {(sourceIsChinese ? "英文" : "简体中文")}，" +
-                            $"注意只需要输出翻译后的结果，不要额外解释： {text}";
+            // 腾讯混元 Hy-MT2 官方模板：指令与待译文本以空行分隔（对通用聊天模型同样适用）。
+            // 原文里的连续换行压成单个，否则模型会把空行当作文本结束而截断后续段落
+            text = System.Text.RegularExpressions.Regex
+                .Replace(text.Replace("\r\n", "\n").Replace('\r', '\n'), "\n{2,}", "\n").Trim();
+            string prompt = $"将以下文本翻译为 {(sourceIsChinese ? "英语" : "简体中文")}，" +
+                            $"注意只需要输出翻译后的结果，不要额外解释：\n\n{text}";
 
             var payload = new Dictionary<string, object>
             {
