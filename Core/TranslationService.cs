@@ -47,8 +47,11 @@ namespace MiniTranslation.Core
             // 原文里的连续换行压成单个，否则模型会把空行当作文本结束而截断后续段落
             text = System.Text.RegularExpressions.Regex
                 .Replace(text.Replace("\r\n", "\n").Replace('\r', '\n'), "\n{2,}", "\n").Trim();
-            string prompt = $"将以下文本翻译为 {(sourceIsChinese ? "英语" : "简体中文")}，" +
-                            $"注意只需要输出翻译后的结果，不要额外解释：\n\n{text}";
+            // prompt 语言跟随原文语言，与官方训练数据的分布一致
+            string prompt = sourceIsChinese
+                ? $"将以下文本翻译为 英语，注意只需要输出翻译后的结果，不要额外解释：\n\n{text}"
+                : "Translate the following text into Simplified Chinese. " +
+                  $"Note that you should only output the translated result without any additional explanation:\n\n{text}";
 
             var payload = new Dictionary<string, object>
             {
