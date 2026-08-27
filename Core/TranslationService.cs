@@ -83,7 +83,13 @@ namespace MiniTranslation.Core
             }
 
             string content = await ReadStreamedContentAsync(response, onProgress, ct).ConfigureAwait(false);
-            return new TranslationResult(content.Trim(), sourceIsChinese);
+            content = content.Trim();
+            if (content.Length == 0)
+            {
+                // 空结果视为接口故障，让路由降权并切换下一个接口
+                throw new InvalidOperationException("接口返回了空结果。");
+            }
+            return new TranslationResult(content, sourceIsChinese);
         }
 
         /// <summary>解析 SSE 流；服务端不支持流式而直接返回完整 JSON 时自动兼容。</summary>
