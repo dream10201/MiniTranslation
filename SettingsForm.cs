@@ -122,7 +122,7 @@ namespace MiniTranslation
             _updateButton.Click += async (_, _) => await CheckUpdateAsync();
             Controls.Add(_updateButton);
             _pending = UpdateManager.GetPending();
-            if (_pending != null) _updateButton.Text = "重启并更新";
+            if (_pending != null) _updateButton.Text = "立即更新";
             y += 52;
 
             // ---- 底部 ----
@@ -423,7 +423,7 @@ namespace MiniTranslation
                 else
                 {
                     _pending = pending;
-                    _updateButton.Text = "重启并更新";
+                    _updateButton.Text = "立即更新";
                     SetStatus($"已就绪 {pending.Version}，将在下次启动时启用。", isError: false);
                 }
             }
