@@ -410,10 +410,6 @@ namespace MiniTranslation
                 }
                 await Task.Delay(50);
             }
-            if (_isShown)
-            {
-                ShowResult("未能读取选中文本；若目标程序以管理员权限运行，本程序也需以管理员身份运行。", isError: true);
-            }
         }
 
         /// <summary>快照剪贴板的常见格式（文本/RTF/HTML/图片/文件列表），失败返回 null。</summary>
