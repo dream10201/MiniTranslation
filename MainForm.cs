@@ -28,6 +28,8 @@ namespace MiniTranslation
         private readonly AppSettings _settings = AppSettings.Load();
         private readonly SpeechService _speech = new();
         private CancellationTokenSource? _translateCts;
+        private string _translatingText = "";
+        private int _captureVersion;
         private string _speakText = "";
         private string _lastClipboardText = "";
         private bool _isShown;
@@ -331,6 +333,7 @@ namespace MiniTranslation
             {
                 _speech.Stop();
                 _translateCts?.Cancel();
+                _captureVersion++;
                 // 清掉可能残留的半截流式译文
                 _speakText = "";
                 ShowResult("", isError: false);
@@ -367,6 +370,21 @@ namespace MiniTranslation
         /// <summary>向前台窗口模拟 Ctrl+C 抓取选中文本，窗口先显示，剪贴板在后台轮询。</summary>
         private async Task ShowWithSelectionCaptureAsync()
         {
+            int version = ++_captureVersion;
+            // 前台程序只看到 Alt/Win 单独按下又松开（热键本身被系统吃掉），
+            // 会把焦点移到菜单栏，后续 Ctrl+C 就到不了页面；先塞一个 Ctrl 点按遮掩
+            MaskModifierRelease();
+            // 先走 UIA 直接读选区，成功就不必碰剪贴板；必须在本窗口抢焦点之前查
+            string selected = await SelectionReader.TryGetSelectedTextAsync(300);
+            if (version != _captureVersion) return;
+            if (selected.Length > 0)
+            {
+                SetVisible(true, suppressClipboard: true);
+                _inputBox.Text = selected;
+                StartTranslate();
+                return;
+            }
+
             uint seqBefore = 0;
             bool sent = false;
             IDataObject? backup = null;
@@ -382,34 +400,60 @@ namespace MiniTranslation
                 seqBefore = GetClipboardSequenceNumber();
                 SendCopyShortcut();
                 sent = true;
-                await Task.Delay(60); // 让目标窗口先处理注入的按键，再抢焦点
             }
             catch
             {
             }
 
-            // 取词模式下不抢跑读剪贴板，否则可能把上一次复制的旧内容
-            // 当成本次选中文本翻译；只认注入 Ctrl+C 之后的序号变化
-            SetVisible(true, suppressClipboard: true);
             if (!sent)
             {
+                SetVisible(true, suppressClipboard: true);
                 TryTranslateClipboard();
                 return;
             }
 
-            // 剪贴板序号只要发生过复制就会变化，与内容是否相同无关；
-            // 放宽到 1.5s 兼容写剪贴板慢的程序
-            for (int i = 0; i < 30; i++)
+            // 取词模式下不抢跑读剪贴板，否则可能把上一次复制的旧内容
+            // 当成本次选中文本翻译；只认注入 Ctrl+C 之后的序号变化。
+            // 序号只要发生过复制就会变化，与内容是否相同无关；
+            // 目标程序迟迟不复制时，趁本窗口还没抢焦点再补发一次 Ctrl+C；
+            // 序号变了但文本还读不到（分多步写入、剪贴板暂时被占用）时继续等
+            bool changed = false, shown = false;
+            for (int i = 0; i < 30 && version == _captureVersion; i++)
             {
-                if (GetClipboardSequenceNumber() != seqBefore)
+                if (!changed && GetClipboardSequenceNumber() != seqBefore) changed = true;
+                if (changed)
                 {
-                    TryTranslateClipboard(force: true);
-                    // 选中文本已读走，把用户原来的剪贴板内容还原回去
-                    if (backup != null) RestoreClipboard(backup);
-                    return;
+                    if (!shown) SetVisible(true, suppressClipboard: true);
+                    shown = true;
+                    string clip = GetClipboardText();
+                    if (clip.Length > 0)
+                    {
+                        _lastClipboardText = clip;
+                        _inputBox.Text = clip;
+                        StartTranslate();
+                        break;
+                    }
+                }
+                else if (i == 3)
+                {
+                    SendCopyShortcut();
+                }
+                else if (i == 6)
+                {
+                    SetVisible(true, suppressClipboard: true);
+                    shown = true;
                 }
                 await Task.Delay(50);
             }
+            if (!shown && version == _captureVersion) SetVisible(true, suppressClipboard: true);
+            // 选中文本已读走（或已被覆盖），把用户原来的剪贴板内容还原回去
+            if (changed && backup != null) RestoreClipboard(backup);
+        }
+
+        private void MaskModifierRelease()
+        {
+            if (!IsKeyDown(0x12) && !IsKeyDown(0x5B) && !IsKeyDown(0x5C)) return; // Alt/LWin/RWin
+            SendInput(2, new[] { Key(0x11, up: false), Key(0x11, up: true) }, Marshal.SizeOf<Input>());
         }
 
         /// <summary>快照剪贴板的常见格式（文本/RTF/HTML/图片/文件列表），失败返回 null。</summary>
@@ -546,6 +590,7 @@ namespace MiniTranslation
                 case Keys.Enter when !e.Shift: // Shift+Enter 换行
                     e.Handled = true;
                     e.SuppressKeyPress = true;
+                    _captureVersion++; // 手动翻译后，仍在等待中的取词不再覆盖输入
                     StartTranslate();
                     break;
                 case Keys.A when e.Control:
@@ -569,6 +614,8 @@ namespace MiniTranslation
             text = System.Text.RegularExpressions.Regex.Replace(text, " ?\n ?", "\n");
             text = System.Text.RegularExpressions.Regex.Replace(text, "\n{3,}", "\n\n").Trim();
             if (text.Length == 0) return;
+            // 同一段文字正在翻译时重复按回车不重来
+            if (_translateCts is { IsCancellationRequested: false } && text == _translatingText) return;
             _inputBox.Text = text.Replace("\n", "\r\n");
             _inputBox.SelectionStart = _inputBox.TextLength;
 
@@ -582,6 +629,7 @@ namespace MiniTranslation
             _translateCts?.Cancel();
             var cts = new CancellationTokenSource();
             _translateCts = cts;
+            _translatingText = text;
             // 先清空上一次的结果，避免误当成本次译文
             _speakText = "";
             ShowResult("", isError: false);
@@ -622,7 +670,11 @@ namespace MiniTranslation
             }
             finally
             {
-                if (_translateCts == cts) SetStatus("");
+                if (_translateCts == cts)
+                {
+                    _translatingText = "";
+                    SetStatus("");
+                }
             }
         }
 
