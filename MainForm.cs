@@ -266,7 +266,7 @@ namespace MiniTranslation
             KeyboardHook.Stop();
             if (HotKeyManager.IsMouseTrigger(_settings.HotKey))
             {
-                if (!MouseHook.Start(Handle))
+                if (!MouseHook.Start(Handle, _settings.DoublePressIntervalMs))
                 {
                     _notifyIcon?.ShowBalloonTip(3000, "MiniTranslation",
                         "鼠标中键双击监听安装失败。", ToolTipIcon.Warning);
@@ -275,7 +275,7 @@ namespace MiniTranslation
             }
             if (HotKeyManager.TryParseDoubleModifier(_settings.HotKey, out var doubleKey))
             {
-                if (!KeyboardHook.Start(Handle, doubleKey))
+                if (!KeyboardHook.Start(Handle, doubleKey, _settings.DoublePressIntervalMs))
                 {
                     _notifyIcon?.ShowBalloonTip(3000, "MiniTranslation",
                         $"快捷键 {_settings.HotKey} 监听安装失败。", ToolTipIcon.Warning);

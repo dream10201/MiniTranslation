@@ -48,6 +48,8 @@ namespace MiniTranslation.Core
         public bool AutoTranslateClipboard { get; set; } = true;
         public bool AutoTranslateSelection { get; set; } = false;
         public string HotKey { get; set; } = "Alt+Q";
+        /// <summary>连按/双击两次之间的最大间隔（毫秒）。</summary>
+        public int DoublePressIntervalMs { get; set; } = 500;
         public bool HideOnFocusLost { get; set; } = false;
         public bool AutoCheckUpdate { get; set; } = true;
         public bool AutoCopyResult { get; set; } = false;

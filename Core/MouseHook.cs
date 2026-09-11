@@ -16,6 +16,7 @@ namespace MiniTranslation.Core
         private static LowLevelMouseProc? _proc;
         private static uint _lastDownTime;
         private static int _lastX, _lastY;
+        private static uint _intervalMs;
 
         private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
 
@@ -40,17 +41,15 @@ namespace MiniTranslation.Core
         private static extern bool PostMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
 
         [DllImport("user32.dll")]
-        private static extern uint GetDoubleClickTime();
-
-        [DllImport("user32.dll")]
         private static extern int GetSystemMetrics(int index);
 
         [DllImport("kernel32.dll")]
         private static extern IntPtr GetModuleHandle(string? lpModuleName);
 
-        public static bool Start(IntPtr targetHwnd)
+        public static bool Start(IntPtr targetHwnd, int intervalMs)
         {
             _targetHwnd = targetHwnd;
+            _intervalMs = (uint)intervalMs;
             if (_hook != IntPtr.Zero) return true;
             _proc = HookProc;
             _hook = SetWindowsHookEx(WhMouseLl, _proc, GetModuleHandle(null), 0);
@@ -70,7 +69,7 @@ namespace MiniTranslation.Core
             if (nCode >= 0 && wParam == WmMButtonDown)
             {
                 var info = Marshal.PtrToStructure<MsllHookStruct>(lParam);
-                bool isDouble = info.Time - _lastDownTime <= GetDoubleClickTime()
+                bool isDouble = info.Time - _lastDownTime <= _intervalMs
                     && Math.Abs(info.X - _lastX) <= GetSystemMetrics(SmCxDoubleClk) / 2
                     && Math.Abs(info.Y - _lastY) <= GetSystemMetrics(SmCyDoubleClk) / 2;
                 if (isDouble)

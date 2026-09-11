@@ -20,6 +20,7 @@ namespace MiniTranslation
         private readonly TextBox _keyBox;
         private readonly TextBox _modelBox;
         private readonly TextBox _hotKeyBox;
+        private readonly NumericUpDown _intervalBox;
         private readonly CheckBox _clipboardCheck;
         private readonly CheckBox _selectionCheck;
         private readonly CheckBox _hideOnFocusLostCheck;
@@ -104,6 +105,19 @@ namespace MiniTranslation
             _hotKeyBox.KeyDown += HotKeyBox_KeyDown;
             _hotKeyBox.KeyUp += HotKeyBox_KeyUp;
             _hotKeyBox.MouseDown += HotKeyBox_MouseDown;
+            AddLabel("连按间隔", InputX + 176, y + 4);
+            _intervalBox = new NumericUpDown
+            {
+                Location = new Point(InputX + 246, y),
+                Size = new Size(80, 28),
+                Minimum = 100,
+                Maximum = 2000,
+                Increment = 50,
+                Value = Math.Clamp(settings.DoublePressIntervalMs, 100, 2000),
+                ForeColor = TextMain,
+            };
+            Controls.Add(_intervalBox);
+            AddMutedLabel("ms", InputX + 332, y + 4);
             y += 44;
 
             _clipboardCheck = AddCheckBox("显示窗口时自动翻译剪贴板内容", ref y, settings.AutoTranslateClipboard);
@@ -235,7 +249,7 @@ namespace MiniTranslation
             {
                 // 同一修饰键松开后快速再按，录制为连按触发
                 if (key == _lastModUpKey &&
-                    Environment.TickCount - _lastModUpTick <= SystemInformation.DoubleClickTime &&
+                    Environment.TickCount - _lastModUpTick <= (int)_intervalBox.Value &&
                     key is Keys.ControlKey or Keys.Menu or Keys.ShiftKey)
                 {
                     _lastModUpKey = Keys.None;
@@ -273,7 +287,7 @@ namespace MiniTranslation
         {
             if (e.Button != MouseButtons.Middle) return;
             int now = Environment.TickCount;
-            if (now - _lastMiddleDownTick <= SystemInformation.DoubleClickTime)
+            if (now - _lastMiddleDownTick <= (int)_intervalBox.Value)
             {
                 _lastMiddleDownTick = 0;
                 _hotKeyBox.Text = HotKeyManager.MouseMiddleDouble;
@@ -455,6 +469,7 @@ namespace MiniTranslation
             _settings.HideOnFocusLost = _hideOnFocusLostCheck.Checked;
             _settings.AutoCopyResult = _autoCopyCheck.Checked;
             _settings.AutoCheckUpdate = _autoUpdateCheck.Checked;
+            _settings.DoublePressIntervalMs = (int)_intervalBox.Value;
             if (HotKeyManager.IsMouseTrigger(_hotKeyBox.Text) ||
                 HotKeyManager.TryParseDoubleModifier(_hotKeyBox.Text, out _) ||
                 HotKeyManager.TryParse(_hotKeyBox.Text, out _, out _))

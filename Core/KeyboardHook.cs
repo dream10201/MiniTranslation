@@ -21,6 +21,7 @@ namespace MiniTranslation.Core
         private static bool _armed;
         private static bool _fired;
         private static uint _armedTime;
+        private static uint _intervalMs;
 
         private delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
 
@@ -43,16 +44,14 @@ namespace MiniTranslation.Core
         [DllImport("user32.dll")]
         private static extern bool PostMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
 
-        [DllImport("user32.dll")]
-        private static extern uint GetDoubleClickTime();
-
         [DllImport("kernel32.dll")]
         private static extern IntPtr GetModuleHandle(string? lpModuleName);
 
-        public static bool Start(IntPtr targetHwnd, Keys target)
+        public static bool Start(IntPtr targetHwnd, Keys target, int intervalMs)
         {
             _targetHwnd = targetHwnd;
             _target = target;
+            _intervalMs = (uint)intervalMs;
             _held = _tainted = _armed = _fired = false;
             if (_hook != IntPtr.Zero) return true;
             _proc = HookProc;
@@ -90,7 +89,7 @@ namespace MiniTranslation.Core
                     {
                         _held = true;
                         _tainted = false;
-                        if (_armed && info.Time - _armedTime <= GetDoubleClickTime())
+                        if (_armed && info.Time - _armedTime <= _intervalMs)
                         {
                             _armed = false;
                             _fired = true;
