@@ -332,11 +332,15 @@ namespace MiniTranslation
             else
             {
                 _speech.Stop();
+                bool inFlight = _translatingText.Length > 0;
                 _translateCts?.Cancel();
                 _captureVersion++;
-                // 清掉可能残留的半截流式译文
-                _speakText = "";
-                ShowResult("", isError: false);
+                // 翻译被打断时清掉半截流式译文；已完成的译文保留，下次同文本直接显示
+                if (inFlight)
+                {
+                    _speakText = "";
+                    ShowResult("", isError: false);
+                }
                 Hide();
             }
             _isShown = visible;
