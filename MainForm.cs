@@ -29,6 +29,7 @@ namespace MiniTranslation
         private readonly SpeechService _speech = new();
         private CancellationTokenSource? _translateCts;
         private string _translatingText = "";
+        private string _translatedText = "";
         private int _captureVersion;
         private string _speakText = "";
         private string _lastClipboardText = "";
@@ -352,11 +353,10 @@ namespace MiniTranslation
             if (!force && !_settings.AutoTranslateClipboard) return;
             if (!_settings.IsConfigured) return;
             string clip = GetClipboardText();
-            // 取词模式（force）刚确认过复制成功，即使与上次文本相同也重新翻译
+            // 取词模式（force）刚确认过复制成功，即使与上次剪贴板文本相同也照常处理
             if (clip.Length == 0 || (!force && clip == _lastClipboardText)) return;
             _lastClipboardText = clip;
-            _inputBox.Text = clip;
-            StartTranslate();
+            AutoTranslate(clip);
         }
 
         private static string GetClipboardText()
@@ -384,8 +384,7 @@ namespace MiniTranslation
             if (selected.Length > 0)
             {
                 SetVisible(true, suppressClipboard: true);
-                _inputBox.Text = selected;
-                StartTranslate();
+                AutoTranslate(selected);
                 return;
             }
 
@@ -433,8 +432,7 @@ namespace MiniTranslation
                     if (clip.Length > 0)
                     {
                         _lastClipboardText = clip;
-                        _inputBox.Text = clip;
-                        StartTranslate();
+                        AutoTranslate(clip);
                         break;
                     }
                 }
@@ -612,11 +610,7 @@ namespace MiniTranslation
 
         private async void StartTranslate()
         {
-            // 只合并行内多余空白，保留换行以保住段落结构
-            string text = _inputBox.Text.Replace("\r\n", "\n");
-            text = System.Text.RegularExpressions.Regex.Replace(text, "[ \t]+", " ");
-            text = System.Text.RegularExpressions.Regex.Replace(text, " ?\n ?", "\n");
-            text = System.Text.RegularExpressions.Regex.Replace(text, "\n{3,}", "\n\n").Trim();
+            string text = NormalizeInput(_inputBox.Text);
             if (text.Length == 0) return;
             // 同一段文字正在翻译时重复按回车不重来
             if (_translateCts is { IsCancellationRequested: false } && text == _translatingText) return;
@@ -656,6 +650,7 @@ namespace MiniTranslation
                 }, cts.Token);
                 if (cts.IsCancellationRequested) return;
                 ShowResult(result.Text, isError: false);
+                _translatedText = text;
                 _speakText = result.SourceIsChinese ? result.Text : text;
                 if (_settings.AutoCopyResult && result.Text.Length > 0)
                 {
@@ -680,6 +675,28 @@ namespace MiniTranslation
                     SetStatus("");
                 }
             }
+        }
+
+        /// <summary>只合并行内多余空白，保留换行以保住段落结构。</summary>
+        private static string NormalizeInput(string raw)
+        {
+            string text = raw.Replace("\r\n", "\n");
+            text = System.Text.RegularExpressions.Regex.Replace(text, "[ \t]+", " ");
+            text = System.Text.RegularExpressions.Regex.Replace(text, " ?\n ?", "\n");
+            return System.Text.RegularExpressions.Regex.Replace(text, "\n{3,}", "\n\n").Trim();
+        }
+
+        /// <summary>自动触发的翻译：与上次已完成翻译的文本相同时直接沿用上次译文，不再请求接口。</summary>
+        private void AutoTranslate(string text)
+        {
+            _inputBox.Text = text;
+            if (NormalizeInput(text) == _translatedText && _resultBox.TextLength > 0 && _resultBox.ForeColor == TextResult)
+            {
+                _inputBox.SelectionStart = _inputBox.TextLength;
+                LayoutContent();
+                return;
+            }
+            StartTranslate();
         }
 
         private void ShowResult(string text, bool isError)
